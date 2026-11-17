@@ -11,7 +11,8 @@ const cleanTitle = (title) =>
     .replace(/\s+-\s+(official|oficial).*$/i, '')
     .trim() || title;
 
-const firstArtist = (artist) => artist.split(/,|&|•| feat\.? | ft\.? | x /i)[0].trim();
+// "Hillkidd y Mi Compa el Chino" -> "Hillkidd"
+const firstArtist = (artist) => artist.split(/,|&|•| feat\.? | ft\.? | x | y | e | con /i)[0].trim();
 
 async function lrclib(pathname, params) {
   const response = await fetch(`${LRCLIB}${pathname}?${new URLSearchParams(params)}`, {
@@ -41,7 +42,9 @@ async function findLyrics({ title, artist, duration }) {
   // 2) búsqueda: la que tenga tiempos y la duración más parecida
   try {
     const query = by ? { track_name: track, artist_name: by } : { q: track };
-    const hits = (await lrclib('/search', query)) || [];
+    let hits = (await lrclib('/search', query)) || [];
+    // Si con título y artista no sale nada, una búsqueda libre suele encontrarla.
+    if (!hits.length && by) hits = (await lrclib('/search', { q: `${track} ${by}` })) || [];
     const closest = (list) =>
       list.sort((a, b) => Math.abs((a.duration || 0) - length) - Math.abs((b.duration || 0) - length))[0];
     const synced = hits.filter((hit) => hit.syncedLyrics);

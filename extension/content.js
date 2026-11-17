@@ -645,9 +645,20 @@ function music() {
       }
       return;
     }
-    if (adPlaying() || !info.duration) return; // se espera a que empiece la canción de verdad
+    if (adPlaying() || !info.duration) {
+      // Se espera a que empiece la canción de verdad; si aún no hay nada en pantalla, se avisa.
+      if (ly.status === 'idle' || ly.status === 'empty') {
+        ly.status = 'waiting';
+        ly.key = '';
+        showMessage(adPlaying() ? 'La letra aparece en cuanto termine el anuncio.' : 'Cargando la canción…');
+      }
+      return;
+    }
 
-    const key = `${info.title}|${info.artist}`;
+    // La duración va en la clave: justo al cambiar de canción el reproductor todavía informa la duración
+    // de la anterior, y con ese dato no se encuentra la letra con tiempos. Cuando llega la duración real,
+    // la clave cambia y se vuelve a buscar.
+    const key = `${info.title}|${info.artist}|${Math.round(info.duration)}`;
     if (key === ly.key) return;
     ly.key = key;
     ly.status = 'loading';
