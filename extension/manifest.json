@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "MoniMusic",
+  "version": "1.0.0",
+  "description": "Tema con los colores de la portada, panel de diseño y letra sincronizada para YouTube Music.",
+  "icons": {
+    "128": "assets/icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://music.youtube.com/*"
+      ],
+      "css": [
+        "panel.css",
+        "theme.css"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://lrclib.net/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/logo.png"
+      ],
+      "matches": [
+        "https://music.youtube.com/*"
+      ]
+    }
+  ]
+}

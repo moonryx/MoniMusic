@@ -1,0 +1,24 @@
+{
+  "name": "monimusic",
+  "productName": "MoniMusic",
+  "version": "1.0.0",
+  "description": "YouTube Music, con tu estilo: colores de la portada, letra en vivo y panel de diseño.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "extension": "node tools/build-extension.js",
+    "instalar": "node tools/install.js",
+    "release": "node tools/build-release.js",
+    "icon": "electron tools/make-icon.js"
+  },
+  "devDependencies": {
+    "electron": "^45.3.3"
+  },
+  "license": "MIT",
+  "homepage": "https://monim.moonryx.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moonryx/MoniMusic.git"
+  }
+}

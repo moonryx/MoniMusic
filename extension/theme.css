@@ -1,0 +1,334 @@
+/* Generado por tools/build-extension.js a partir de theme.css: edita theme.css, no este. */
+@scope (html:not([data-mk-off])) {
+/* MoniMusic — tema sobre YouTube Music.
+   Todo sale de las variables --mk-*; el panel de diseño (preload.js) las cambia en vivo.
+
+   Dos modos de efectos:
+     · rápido (por defecto): superficies de color sólido tomadas de la portada, sin desenfoques en vivo.
+     · cristal (html[data-mk-fx='glass']): paneles translúcidos con desenfoque; se ve más fino pero pesa más. */
+
+:scope {
+  --mk-accent: #c4a1ff;
+  --mk-ink: #0a0818;
+  --mk-base: #2b1570;
+  --mk-veil: 0.6;
+  --mk-tone: 22 14 52; /* color oscuro de la portada o del tema */
+  --mk-tone-hi: 43 21 112; /* el mismo color, más claro */
+  --mk-glass-rgb: 14 13 22;
+  --mk-glass-a: 0.52;
+  --mk-blur: 28px;
+  --mk-radius: 14px;
+  --mk-amb-bright: 0.74;
+  --mk-amb-blur: 90px;
+  --mk-g1: rgba(140, 82, 255, 0.8);
+  --mk-g2: rgba(255, 79, 150, 0.62);
+  --mk-g3: rgba(40, 140, 255, 0.66);
+
+  --mk-line: rgba(255, 255, 255, 0.08);
+  --mk-radius-sm: calc(var(--mk-radius) * 0.58);
+
+  /* superficies en modo rápido */
+  --mk-backdrop: none;
+  --mk-backdrop-strong: none;
+  --mk-bar: rgb(var(--mk-tone) / 0.96);
+  --mk-side: rgb(var(--mk-tone) / 0.5);
+  --mk-pop: rgb(var(--mk-tone) / 0.985);
+  --mk-page: linear-gradient(180deg, rgb(var(--mk-tone-hi) / 0.97) 0%, rgb(var(--mk-tone) / 0.985) 72%);
+}
+
+:scope[data-mk-fx='glass'] {
+  --mk-backdrop: blur(var(--mk-blur)) saturate(1.5);
+  --mk-backdrop-strong: blur(calc(var(--mk-blur) + 18px)) saturate(1.4);
+  --mk-bar: rgb(var(--mk-glass-rgb) / calc(var(--mk-glass-a) + 0.14));
+  --mk-side: rgb(var(--mk-glass-rgb) / var(--mk-glass-a));
+  --mk-pop: rgb(var(--mk-glass-rgb) / 0.94);
+  --mk-page: rgb(var(--mk-glass-rgb) / 0.5);
+}
+
+:scope {
+  background: var(--mk-ink) !important;
+}
+
+body {
+  background: transparent !important;
+}
+
+:scope[data-mk-font] body,
+:scope[data-mk-font] body *:not(#mk-panel):not(#mk-panel *) {
+  font-family: var(--mk-font) !important;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--mk-accent) 45%, transparent);
+  color: #fff;
+}
+
+/* ---------- fondo ambiental (una sola capa, se dibuja una vez por canción) ---------- */
+#mk-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  background:
+    radial-gradient(95% 85% at 6% 0%, var(--mk-g1), transparent 72%),
+    radial-gradient(85% 80% at 100% 12%, var(--mk-g2), transparent 72%),
+    radial-gradient(110% 95% at 55% 112%, var(--mk-g3), transparent 72%),
+    var(--mk-base);
+}
+
+:scope[data-mk-bg='solid'] #mk-ambient {
+  background: var(--mk-ink);
+}
+
+#mk-ambient .mk-layer {
+  position: absolute;
+  inset: -12%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(var(--mk-amb-blur)) saturate(1.8) brightness(var(--mk-amb-bright));
+  opacity: 0;
+  transform: scale(1.08);
+  transition: opacity 1.2s ease;
+}
+
+#mk-ambient .mk-layer.mk-on {
+  opacity: 1;
+}
+
+:scope[data-mk-bg='gradient'] #mk-ambient .mk-layer,
+:scope[data-mk-bg='solid'] #mk-ambient .mk-layer {
+  display: none;
+}
+
+#mk-ambient .mk-veil {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--mk-glass-rgb) / calc(0.2 * var(--mk-veil))) 0%,
+    rgb(var(--mk-glass-rgb) / calc(0.46 * var(--mk-veil))) 55%,
+    rgb(var(--mk-glass-rgb) / calc(0.76 * var(--mk-veil))) 100%
+  );
+}
+
+:scope[data-mk-bg='solid'] #mk-ambient .mk-veil {
+  display: none;
+}
+
+/* ---------- barra superior ---------- */
+#nav-bar-background {
+  background: var(--mk-bar) !important;
+  -webkit-backdrop-filter: var(--mk-backdrop);
+  backdrop-filter: var(--mk-backdrop);
+  border-bottom: 1px solid var(--mk-line) !important;
+}
+
+#nav-bar-divider {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+ytmusic-search-box .search-box,
+ytmusic-search-box #suggestion-list {
+  border-radius: var(--mk-radius) !important;
+}
+
+ytmusic-search-box .search-box {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid var(--mk-line) !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+ytmusic-search-box[opened] .search-box,
+ytmusic-search-box .search-box:focus-within {
+  background: rgba(255, 255, 255, 0.13) !important;
+  border-color: color-mix(in srgb, var(--mk-accent) 60%, transparent) !important;
+}
+
+/* ---------- menú lateral ---------- */
+#guide-wrapper,
+#mini-guide-background {
+  background: var(--mk-side) !important;
+  -webkit-backdrop-filter: var(--mk-backdrop);
+  backdrop-filter: var(--mk-backdrop);
+  border-right: 1px solid var(--mk-line) !important;
+}
+
+ytmusic-guide-entry-renderer tp-yt-paper-item {
+  border-radius: var(--mk-radius-sm) !important;
+}
+
+ytmusic-guide-entry-renderer[active] tp-yt-paper-item {
+  background: color-mix(in srgb, var(--mk-accent) 22%, rgba(255, 255, 255, 0.05)) !important;
+}
+
+/* ---------- contenido ---------- */
+ytmusic-browse-response,
+ytmusic-search-page,
+ytmusic-tabbed-search-results-renderer,
+ytmusic-section-list-renderer,
+#content.ytmusic-app {
+  background: transparent !important;
+}
+
+ytmusic-tabs.stuck,
+ytmusic-tabs {
+  background: transparent !important;
+}
+
+/* YouTube Music pinta su propia imagen de cabecera y un degradado a negro encima del fondo:
+   se quitan los dos (el fondo ambiental ya cumple ese papel y así hay menos que dibujar al cambiar de página). */
+ytmusic-browse-response .background-gradient {
+  background: none !important;
+}
+
+ytmusic-browse-response > #background,
+ytmusic-browse-response > ytmusic-fullbleed-thumbnail-renderer {
+  display: none !important;
+}
+
+ytmusic-chip-cloud-renderer,
+ytmusic-chip-cloud-renderer * {
+  scrollbar-width: none !important;
+}
+
+ytmusic-chip-cloud-chip-renderer a,
+ytmusic-chip-cloud-chip-renderer .gradient-box {
+  border-radius: 999px !important;
+}
+
+ytmusic-chip-cloud-chip-renderer:not([is-selected]) a {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid var(--mk-line) !important;
+}
+
+/* portadas con esquinas suaves (las de artista siguen redondas) */
+ytmusic-two-row-item-renderer:not([aspect-ratio*='CIRCLE']) ytmusic-thumbnail-renderer:not([thumbnail-crop*='CIRCLE']) yt-img-shadow,
+ytmusic-two-row-item-renderer:not([aspect-ratio*='CIRCLE']) ytmusic-thumbnail-renderer:not([thumbnail-crop*='CIRCLE']) img,
+ytmusic-two-row-item-renderer:not([aspect-ratio*='CIRCLE']) ytmusic-item-thumbnail-overlay-renderer,
+ytmusic-responsive-header-renderer ytmusic-thumbnail-renderer yt-img-shadow,
+ytmusic-responsive-header-renderer ytmusic-thumbnail-renderer img {
+  border-radius: var(--mk-radius) !important;
+}
+
+ytmusic-responsive-list-item-renderer ytmusic-thumbnail-renderer yt-img-shadow,
+ytmusic-responsive-list-item-renderer ytmusic-thumbnail-renderer img,
+ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer,
+ytmusic-player-bar .thumbnail-image-wrapper,
+ytmusic-player-bar .thumbnail-image-wrapper img,
+ytmusic-miniplayer img,
+ytmusic-player-queue-item yt-img-shadow,
+ytmusic-player-queue-item img {
+  border-radius: var(--mk-radius-sm) !important;
+}
+
+ytmusic-responsive-list-item-renderer {
+  border-radius: var(--mk-radius-sm) !important;
+}
+
+ytmusic-responsive-list-item-renderer:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ---------- barra del reproductor (las dos versiones de YouTube Music) ---------- */
+#player-bar-background {
+  background: transparent !important;
+}
+
+ytmusic-player-bar,
+ytmusic-miniplayer {
+  background: var(--mk-bar) !important;
+  -webkit-backdrop-filter: var(--mk-backdrop);
+  backdrop-filter: var(--mk-backdrop);
+  border-top: 1px solid var(--mk-line) !important;
+}
+
+ytmusic-player-bar #progress-bar,
+ytmusic-player-bar #volume-slider,
+ytmusic-player-bar #expand-volume-slider {
+  --paper-slider-active-color: var(--mk-accent) !important;
+  --paper-slider-knob-color: var(--mk-accent) !important;
+  --paper-slider-knob-start-color: var(--mk-accent) !important;
+  --paper-slider-knob-start-border-color: var(--mk-accent) !important;
+}
+
+/* ---------- pantalla "Ahora suena" ---------- */
+ytmusic-player-page {
+  background: var(--mk-page) !important;
+  -webkit-backdrop-filter: var(--mk-backdrop-strong);
+  backdrop-filter: var(--mk-backdrop-strong);
+}
+
+ytmusic-player-page #player,
+ytmusic-player-page #player #song-image,
+ytmusic-player-page #player #song-image img,
+ytmusic-player-page ytmusic-player {
+  border-radius: calc(var(--mk-radius) + 4px) !important;
+}
+
+ytmusic-player-page #player {
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.75);
+  overflow: hidden;
+}
+
+ytmusic-player-page #side-panel,
+ytmusic-player-page ytmusic-tab-renderer,
+ytmusic-player-queue {
+  background: transparent !important;
+}
+
+ytmusic-player-queue-item[selected] {
+  background: color-mix(in srgb, var(--mk-accent) 18%, rgba(255, 255, 255, 0.05)) !important;
+  border-radius: var(--mk-radius-sm) !important;
+}
+
+/* ---------- menús y diálogos ---------- */
+tp-yt-paper-listbox,
+ytmusic-menu-popup-renderer,
+ytmusic-multi-page-menu-renderer,
+tp-yt-paper-dialog {
+  border-radius: var(--mk-radius) !important;
+}
+
+ytmusic-menu-popup-renderer,
+ytmusic-multi-page-menu-renderer {
+  background: var(--mk-pop) !important;
+  border: 1px solid var(--mk-line) !important;
+}
+
+/* ---------- barras de desplazamiento ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #mk-ambient .mk-layer {
+    transition: none !important;
+  }
+}
+
+}

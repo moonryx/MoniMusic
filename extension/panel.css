@@ -1,0 +1,749 @@
+/* Generado por tools/build-extension.js a partir de panel.css: edita panel.css, no este. */
+/* MoniMusic — botones de la barra, panel de diseño y letra sincronizada.
+   Se carga siempre, incluso con el tema apagado. */
+
+:root {
+  /* Hueco a la derecha de la barra superior.
+     Si la ventana dibuja sus botones (minimizar, maximizar, cerrar) encima de la página, el navegador
+     informa cuánto ocupan con env(titlebar-area-*); se les deja ese sitio más un respiro.
+     En una ventana o pestaña normal queda el margen de siempre de YouTube Music (100px). */
+  --mk-wco: max(100px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 16px));
+}
+
+/* La barra superior sirve para mover la ventana. */
+ytmusic-nav-bar {
+  -webkit-app-region: drag;
+}
+
+ytmusic-nav-bar a,
+ytmusic-nav-bar button,
+ytmusic-nav-bar input,
+ytmusic-nav-bar yt-icon-button,
+ytmusic-nav-bar tp-yt-paper-icon-button,
+ytmusic-nav-bar yt-button-shape,
+ytmusic-nav-bar ytmusic-search-box,
+ytmusic-nav-bar ytmusic-settings-button,
+ytmusic-nav-bar ytmusic-cast-button,
+ytmusic-nav-bar .history-button,
+ytmusic-nav-bar #left-content > * {
+  -webkit-app-region: no-drag;
+}
+
+/* El grupo de botones de la derecha deja libre el sitio de los botones de Windows,
+   tanto en ventana pequeña (va en fila) como en grande (YouTube Music lo pone flotante). */
+ytmusic-nav-bar #right-content,
+ytmusic-nav-bar .right-content {
+  right: 0 !important;
+  padding-right: var(--mk-wco) !important;
+  align-items: center;
+}
+
+#mk-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 14px;
+  flex: none;
+  -webkit-app-region: no-drag;
+}
+
+#mk-tools.mk-floating {
+  position: fixed;
+  top: 12px;
+  right: var(--mk-wco);
+  z-index: 2147483000;
+}
+
+#mk-fab,
+#mk-lyrics-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+#mk-fab:hover,
+#mk-lyrics-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: color-mix(in srgb, var(--mk-accent, #c4a1ff) 70%, transparent);
+  transform: scale(1.06);
+}
+
+#mk-fab:active,
+#mk-lyrics-btn:active {
+  transform: scale(0.96);
+}
+
+#mk-fab {
+  border-color: color-mix(in srgb, var(--mk-accent, #c4a1ff) 45%, transparent);
+}
+
+.mk-logo:not([src]) {
+  visibility: hidden;
+}
+
+#mk-fab .mk-logo {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1.14);
+}
+
+/* Mientras suena la música el monito se mece al ritmo (animación en tiempo real, sin saltos). */
+html[data-mk-playing] .mk-logo {
+  animation: mk-bob 1.1s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+html[data-mk-playing] #mk-fab {
+  animation: mk-beat 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes mk-bob {
+  from {
+    transform: scale(1.14) rotate(-8deg) translateY(1.5%);
+  }
+
+  to {
+    transform: scale(1.2) rotate(8deg) translateY(-1.5%);
+  }
+}
+
+@keyframes mk-beat {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mk-accent, #c4a1ff) 55%, transparent);
+  }
+
+  to {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--mk-accent, #c4a1ff) 0%, transparent);
+  }
+}
+
+/* botón "Letra en vivo": con texto para que se encuentre a la primera */
+#mk-lyrics-btn {
+  width: auto;
+  padding: 0 14px 0 11px;
+  border-radius: 999px;
+  grid-auto-flow: column;
+  gap: 7px;
+  font: 600 13px/1 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  white-space: nowrap;
+}
+
+#mk-lyrics-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+@media (max-width: 980px) {
+  #mk-lyrics-btn {
+    width: 40px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  #mk-lyrics-btn span {
+    display: none;
+  }
+}
+
+/* botón dentro de la pestaña "Letra" de YouTube Music */
+#mk-ly-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: calc(100% - 8px);
+  margin: 6px 0 18px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--mk-accent, #c4a1ff);
+  color: #14101f;
+  font: 700 14px/1.2 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+#mk-ly-cta:hover {
+  filter: brightness(1.1);
+}
+
+#mk-ly-cta:active {
+  transform: scale(0.98);
+}
+
+#mk-ly-cta svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+html[data-mk-lyrics] #mk-lyrics-btn {
+  background: var(--mk-accent, #c4a1ff);
+  border-color: transparent;
+  color: #14101f;
+}
+
+#mk-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483100;
+  background: rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  -webkit-app-region: no-drag;
+}
+
+#mk-panel {
+  --p-accent: var(--mk-accent, #c4a1ff);
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2147483200;
+  width: 372px;
+  max-width: 100vw;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  color: #f1eef8;
+  font: 400 13.5px/1.45 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  background: rgba(17, 15, 26, 0.975);
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  -webkit-backdrop-filter: var(--mk-backdrop, none);
+  backdrop-filter: var(--mk-backdrop, none);
+  box-shadow: -30px 0 80px -30px rgba(0, 0, 0, 0.8);
+  transform: translateX(104%);
+  transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+
+html[data-mk-open] #mk-panel {
+  transform: none;
+}
+
+html[data-mk-open] #mk-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#mk-panel * {
+  box-sizing: border-box;
+}
+
+#mk-panel .mk-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: max(22px, calc(env(titlebar-area-height, 0px) + 14px)) 22px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+#mk-panel .mk-head .mk-logo {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 15px;
+  object-fit: cover;
+  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.7);
+}
+
+#mk-panel .mk-title {
+  font: 700 18px/1.15 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+#mk-panel .mk-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: rgba(241, 238, 248, 0.58);
+}
+
+#mk-panel .mk-close {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#mk-panel .mk-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#mk-panel .mk-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 22px 26px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+#mk-panel .mk-section {
+  padding: 18px 0 4px;
+}
+
+#mk-panel .mk-section + .mk-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 16px;
+}
+
+#mk-panel h3 {
+  margin: 0 0 12px;
+  font: 600 11px/1 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(241, 238, 248, 0.5);
+}
+
+/* temas */
+#mk-panel .mk-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+#mk-panel .mk-preset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+#mk-panel .mk-preset i {
+  display: block;
+  height: 58px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  filter: saturate(1.5) brightness(1.7);
+  transition: outline-color 0.18s ease, transform 0.18s ease;
+}
+
+#mk-panel .mk-preset:hover i {
+  transform: translateY(-2px);
+}
+
+#mk-panel .mk-preset[aria-pressed='true'] i {
+  outline-color: var(--p-accent);
+}
+
+#mk-panel .mk-preset span {
+  display: block;
+  margin-top: 7px;
+  font-size: 12px;
+  color: rgba(241, 238, 248, 0.82);
+}
+
+/* acento */
+#mk-panel .mk-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+}
+
+#mk-panel .mk-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  cursor: pointer;
+  transition: transform 0.15s ease, outline-color 0.15s ease;
+}
+
+#mk-panel .mk-swatch:hover {
+  transform: scale(1.12);
+}
+
+#mk-panel .mk-swatch[aria-pressed='true'] {
+  outline-color: #fff;
+}
+
+#mk-panel .mk-swatch.mk-auto {
+  width: auto;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: conic-gradient(from 210deg, #ff7ab6, #ffc46b, #7be0a6, #6bb8ff, #b58cff, #ff7ab6);
+  color: #14101f;
+  font: 600 12px/1 'Segoe UI', system-ui, sans-serif;
+}
+
+#mk-panel input[type='color'] {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+#mk-panel input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+#mk-panel input[type='color']::-webkit-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+/* botones segmentados */
+#mk-panel .mk-seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+#mk-panel .mk-seg button {
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: rgba(241, 238, 248, 0.7);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+#mk-panel .mk-seg button:hover {
+  color: #fff;
+}
+
+#mk-panel .mk-seg button[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* deslizadores */
+#mk-panel .mk-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-top: 14px;
+}
+
+#mk-panel .mk-row label {
+  color: rgba(241, 238, 248, 0.86);
+}
+
+#mk-panel .mk-row output {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: rgba(241, 238, 248, 0.5);
+}
+
+#mk-panel input[type='range'] {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--p-accent);
+  cursor: pointer;
+}
+
+#mk-panel select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+#mk-panel select option {
+  background: #1a1726;
+  color: #f1eef8;
+}
+
+#mk-panel .mk-wide {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--p-accent);
+  color: #14101f;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+#mk-panel .mk-wide:hover {
+  filter: brightness(1.1);
+}
+
+#mk-panel .mk-wide:active {
+  transform: scale(0.98);
+}
+
+#mk-panel .mk-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(241, 238, 248, 0.5);
+}
+
+#mk-panel .mk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 12px;
+  color: rgba(241, 238, 248, 0.45);
+}
+
+#mk-panel .mk-reset {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: none;
+  color: #f1eef8;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+#mk-panel .mk-reset:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#mk-panel button:focus-visible,
+#mk-panel select:focus-visible,
+#mk-panel input:focus-visible,
+#mk-fab:focus-visible,
+#mk-lyrics-btn:focus-visible,
+#mk-lyrics button:focus-visible {
+  outline: 2px solid var(--p-accent);
+  outline-offset: 2px;
+}
+
+html[data-mk-fx='glass'] #mk-panel {
+  background: rgba(17, 15, 26, 0.86);
+}
+
+html:not([data-mk-fx='glass']) #mk-panel .mk-only-glass {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+html[data-mk-off] #mk-panel .mk-needs-theme {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ---------- letra sincronizada ---------- */
+#mk-lyrics {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 64px;
+  bottom: 0;
+  /* por encima de la página y por debajo de la barra superior y del reproductor */
+  z-index: 3;
+  display: none;
+  grid-template-columns: minmax(240px, 34%) 1fr;
+  gap: clamp(24px, 5vw, 80px);
+  padding: 0 clamp(24px, 6vw, 110px);
+  box-sizing: border-box;
+  color: #fff;
+  font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  background: var(--mk-page, linear-gradient(180deg, #241a4a, #0f0b22));
+  -webkit-backdrop-filter: var(--mk-backdrop-strong, none);
+  backdrop-filter: var(--mk-backdrop-strong, none);
+  -webkit-app-region: no-drag;
+}
+
+html[data-mk-lyrics] #mk-lyrics {
+  display: grid;
+  animation: mk-ly-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes mk-ly-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+#mk-lyrics .mk-ly-side {
+  align-self: center;
+  min-width: 0;
+}
+
+#mk-lyrics .mk-ly-cover {
+  display: block;
+  width: 100%;
+  max-width: 380px;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: calc(var(--mk-radius, 14px) + 6px);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.85);
+}
+
+#mk-lyrics .mk-ly-cover:not([src]) {
+  visibility: hidden;
+}
+
+#mk-lyrics .mk-ly-title {
+  margin-top: 22px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+#mk-lyrics .mk-ly-artist {
+  margin-top: 6px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.66);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#mk-lyrics .mk-ly-note {
+  margin-top: 14px;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+#mk-lyrics .mk-ly-scroll {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 42vh 12px 42vh 0;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
+}
+
+#mk-lyrics .mk-line {
+  margin: 0 0 22px;
+  font-size: clamp(22px, 2.5vw, 36px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transform-origin: left center;
+  transition: color 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  text-wrap: balance;
+}
+
+#mk-lyrics .mk-line:hover {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+#mk-lyrics .mk-line.mk-past {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+#mk-lyrics .mk-line.mk-active {
+  color: #fff;
+  transform: scale(1.04);
+  text-shadow: 0 0 34px color-mix(in srgb, var(--mk-accent, #c4a1ff) 60%, transparent);
+}
+
+#mk-lyrics .mk-line.mk-plain {
+  font-size: clamp(17px, 1.6vw, 22px);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: default;
+  margin-bottom: 8px;
+}
+
+#mk-lyrics .mk-ly-msg {
+  margin: 0;
+  font-size: clamp(18px, 2vw, 26px);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+#mk-lyrics .mk-ly-close {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#mk-lyrics .mk-ly-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@media (max-width: 860px) {
+  #mk-lyrics {
+    grid-template-columns: 1fr;
+  }
+
+  #mk-lyrics .mk-ly-side {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #mk-panel,
+  #mk-scrim,
+  #mk-fab,
+  #mk-lyrics-btn,
+  #mk-lyrics .mk-line {
+    transition: none;
+  }
+
+  html[data-mk-lyrics] #mk-lyrics {
+    animation: none;
+  }
+}
