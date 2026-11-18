@@ -238,10 +238,11 @@ function music() {
     const scaled = (target) => rgb.map((value) => Math.round((value / peak) * Math.min(target, Math.max(peak, 24)))).join(' ');
     root.style.setProperty('--mk-tone', scaled(62));
     root.style.setProperty('--mk-tone-hi', scaled(128));
-    // la barra de título toma el mismo color que la barra de arriba
+    // la barra de título toma el color de la canción, un punto entre el tono oscuro y el claro
+    // para que empate con la parte de arriba de la página
     if (enabled()) {
       paintTitleBar(
-        scaled(62)
+        scaled(92)
           .split(' ')
           .map((value) => Number(value).toString(16).padStart(2, '0'))
           .join(''),
