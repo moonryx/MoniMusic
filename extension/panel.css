@@ -572,6 +572,55 @@ html[data-mk-off] #mk-panel .mk-needs-theme {
   pointer-events: none;
 }
 
+/* ---------- botón de letra en vivo en la barra del reproductor ---------- */
+#mk-bar-lyrics {
+  flex: none;
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  margin-left: 14px;
+  padding: 0 13px 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font: 600 12.5px/1 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+#mk-bar-lyrics svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+#mk-bar-lyrics:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+html[data-mk-lyrics] #mk-bar-lyrics {
+  background: var(--mk-accent, #c4a1ff);
+  border-color: transparent;
+  color: #0b0b10;
+}
+
+@media (max-width: 900px) {
+  #mk-bar-lyrics {
+    width: 34px;
+    margin-left: 8px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  #mk-bar-lyrics span {
+    display: none;
+  }
+}
+
 /* ---------- letra sincronizada ---------- */
 #mk-lyrics {
   position: fixed;

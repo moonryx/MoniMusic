@@ -84,7 +84,7 @@ function music() {
     accentAuto: true,
     accent: '#c4a1ff',
     bg: 'cover',
-    motion: 'on',
+    motion: 'music',
     vivid: 70,
     ambBright: 74,
     ambBlur: 90,
@@ -198,7 +198,8 @@ function music() {
       root.style.setProperty('--mk-amb-bright', String(settings.ambBright / 100));
       root.style.setProperty('--mk-amb-blur', `${settings.ambBlur}px`);
       root.dataset.mkBg = settings.bg;
-      root.dataset.mkMotion = settings.motion === 'off' ? 'off' : 'on';
+      // "on" era el valor de la versión anterior: ahora es "con la música"
+      root.dataset.mkMotion = settings.motion === 'off' || settings.motion === 'calm' ? settings.motion : 'music';
       root.dataset.mkFx = settings.fx === 'glass' ? 'glass' : 'fast';
       applyTone();
       if (settings.font === 'default') {
@@ -332,10 +333,194 @@ function music() {
       ambient.appendChild(layer);
       layers.push(layer);
     }
-    // manchas de color que se pasean por el fondo (ajuste "Movimiento")
-    for (let i = 1; i <= 3; i += 1) ambient.appendChild(el('div', { class: `mk-blob mk-b${i}` }));
     ambient.appendChild(el('div', { class: 'mk-veil' }));
+    // manchas de color que se pasean por el fondo (ajuste "Movimiento") y un destello que late con los golpes
+    for (let i = 1; i <= 3; i += 1) {
+      const blob = el('div', { class: `mk-blob mk-b${i}` });
+      ambient.appendChild(blob);
+      beat.blobs.push(blob);
+    }
+    ambient.appendChild(el('div', { class: 'mk-flash' }));
+    beat.box = ambient;
     document.body.prepend(ambient);
+  }
+
+  // ---------- el fondo baila con la música ----------
+  // Se escucha el sonido del reproductor con una copia (captureStream): no se desvía, sigue sonando igual.
+  // De esa copia se miden los graves: en cada golpe las manchas laten y sale un destello, y mientras más golpes
+  // y más volumen tiene la canción, más rápido se pasean. Solo trabaja con el ajuste "Con la música",
+  // mientras suena algo y con la ventana a la vista.
+  const beat = {
+    box: null,
+    blobs: [],
+    ctx: null,
+    analyser: null,
+    data: null,
+    source: null,
+    media: null,
+    stream: null,
+    raf: 0,
+    then: 0,
+    avg: 0,
+    pulse: 0,
+    level: 0,
+    last: 0,
+    hits: [],
+    rate: 1,
+    rateAt: 0,
+    phase: [0.4, 2.1, 4.0], // en qué punto de su paseo va cada mancha
+    off: false, // sin forma de escuchar (navegador sin captureStream o AudioContext)
+  };
+  const calmMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  function wantsBeat() {
+    return (
+      enabled() &&
+      settings.motion !== 'off' &&
+      settings.motion !== 'calm' &&
+      settings.bg !== 'solid' &&
+      !calmMotion.matches &&
+      !document.hidden
+    );
+  }
+
+  function listenTo(media) {
+    if (beat.media === media && beat.stream && beat.stream.getAudioTracks().some((track) => track.readyState === 'live')) {
+      return true;
+    }
+    if (beat.off || typeof media.captureStream !== 'function') {
+      beat.off = true;
+      return false;
+    }
+    if (!beat.ctx) {
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) {
+        beat.off = true;
+        return false;
+      }
+      beat.ctx = new Context();
+      beat.analyser = beat.ctx.createAnalyser();
+      beat.analyser.fftSize = 1024;
+      beat.analyser.smoothingTimeConstant = 0.5;
+      beat.data = new Uint8Array(beat.analyser.frequencyBinCount);
+      // El medidor tiene que llegar a la salida para recibir datos; va con volumen cero, así no suena doble.
+      const mute = beat.ctx.createGain();
+      mute.gain.value = 0;
+      beat.analyser.connect(mute);
+      mute.connect(beat.ctx.destination);
+    }
+    if (beat.source) {
+      try {
+        beat.source.disconnect();
+      } catch {
+        /* ya estaba suelto */
+      }
+      beat.source = null;
+    }
+    try {
+      const stream = media.captureStream();
+      if (!stream.getAudioTracks().length) return false; // todavía sin sonido: se reintenta en un momento
+      beat.source = beat.ctx.createMediaStreamSource(stream);
+      beat.source.connect(beat.analyser); // al medidor (que sale en silencio): la canción suena como siempre
+      beat.stream = stream;
+      beat.media = media;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // El navegador no deja arrancar el audio sin un clic o una tecla: se reanuda con el primero que haya.
+  function wakeBeat() {
+    if (beat.ctx && beat.ctx.state === 'suspended') beat.ctx.resume().catch(() => {});
+  }
+
+  function bandLevel(fromHz, toHz) {
+    const step = beat.ctx.sampleRate / beat.analyser.fftSize;
+    const lo = Math.max(1, Math.round(fromHz / step));
+    const hi = Math.min(beat.data.length - 1, Math.max(lo, Math.round(toHz / step)));
+    let sum = 0;
+    for (let i = lo; i <= hi; i += 1) sum += beat.data[i];
+    return sum / ((hi - lo + 1) * 255);
+  }
+
+  function beatFrame(now) {
+    beat.raf = 0;
+    if (!wantsBeat()) {
+      restBeat();
+      return;
+    }
+    const dt = Math.min(100, beat.then ? now - beat.then : 16);
+    beat.then = now;
+    const media = video();
+    const playing = Boolean(media && !media.paused && !media.ended && !adPlaying());
+    const hearing = playing && beat.source && beat.ctx && beat.ctx.state === 'running';
+
+    if (hearing) {
+      beat.analyser.getByteFrequencyData(beat.data);
+      const bass = bandLevel(40, 200);
+      const body = bandLevel(40, 4000);
+      beat.avg += (bass - beat.avg) * Math.min(1, dt / 600);
+      // golpe: los graves saltan por encima de su promedio reciente
+      if (bass > 0.18 && bass > beat.avg * 1.12 + 0.025 && now - beat.last > 190) {
+        beat.pulse = Math.min(1, beat.pulse * 0.5 + 0.5 + (bass - beat.avg) * 3);
+        beat.last = now;
+        beat.hits.push(now);
+      }
+      beat.level += (body - beat.level) * Math.min(1, dt / 400);
+    } else {
+      beat.level += (0 - beat.level) * Math.min(1, dt / 800);
+    }
+    beat.pulse *= Math.pow(0.86, dt / 16.7);
+    while (beat.hits.length && now - beat.hits[0] > 8000) beat.hits.shift();
+
+    // qué tan movida va la canción: golpes por segundo y volumen
+    const perSecond = beat.hits.length / 8;
+    const busy = Math.min(1, perSecond / 2.6) * 0.7 + Math.min(1, beat.level * 1.8) * 0.3;
+    const target = hearing ? 0.7 + busy * 6 : playing ? 1 : 0.3;
+    beat.rate += (target - beat.rate) * Math.min(1, dt / 1500);
+
+    // Cada mancha da vueltas por su propio camino; la velocidad (beat.rate) sube con lo movida que va la canción.
+    // Una vuelta completa a ritmo 1 tarda ~50 s; con una canción muy movida, unos 8 s.
+    const step = (dt / 1000) * beat.rate * 0.12;
+    const s = beat.box.style;
+    beat.phase.forEach((value, i) => {
+      const phase = value + step * (1 + i * 0.23);
+      beat.phase[i] = phase;
+      const n = i + 1;
+      s.setProperty(`--mk-x${n}`, `${(Math.sin(phase) * 22 + Math.sin(phase * 0.53 + i) * 10).toFixed(2)}vmax`);
+      s.setProperty(`--mk-y${n}`, `${(Math.cos(phase * 0.81 + i) * 18).toFixed(2)}vmax`);
+      s.setProperty(`--mk-s${n}`, (1 + Math.sin(phase * 0.67 + i * 2) * 0.18).toFixed(3));
+    });
+    s.setProperty('--mk-pulse', beat.pulse.toFixed(3));
+    s.setProperty('--mk-energy', beat.level.toFixed(3));
+    if (now - beat.rateAt > 200) {
+      beat.rateAt = now;
+      beat.box.dataset.mkRate = beat.rate.toFixed(2);
+      beat.box.dataset.mkHits = String(beat.hits.length);
+      beat.box.dataset.mkAudio = hearing ? 'escuchando' : beat.off ? 'sin-acceso' : playing ? 'esperando' : 'en-pausa';
+    }
+    beat.raf = requestAnimationFrame(beatFrame);
+  }
+
+  function restBeat() {
+    beat.then = 0;
+    beat.pulse = 0;
+    beat.rate = 1;
+    if (!beat.box) return;
+    beat.box.style.setProperty('--mk-pulse', '0');
+    beat.box.style.setProperty('--mk-energy', '0');
+  }
+
+  // Se llama cada poco: engancha el sonido de la canción que suena y arranca el cuadro por cuadro.
+  function updateBeat() {
+    if (!beat.box || !wantsBeat()) return;
+    const media = video();
+    if (media && !media.paused) {
+      listenTo(media);
+      wakeBeat();
+    }
+    if (!beat.raf) beat.raf = requestAnimationFrame(beatFrame);
   }
 
   function bigger(url) {
@@ -431,6 +616,29 @@ function music() {
       document.body.appendChild(tools);
       tools.classList.add('mk-floating');
     }
+  }
+
+  // Botón de letra en vivo junto a los controles de la barra del reproductor.
+  let barLyrics = null;
+
+  function placeBarLyrics() {
+    const host = document.querySelector('ytmusic-player-bar .left-controls');
+    if (!host) return;
+    if (!barLyrics) {
+      barLyrics = el(
+        'button',
+        {
+          id: 'mk-bar-lyrics',
+          type: 'button',
+          title: 'Letra en vivo',
+          'aria-label': 'Mostrar la letra en vivo',
+          onclick: () => toggleLyrics(!lyricsOpen()),
+        },
+        icon(['M9 18V5l11-2v13', 'M9 18a3 3 0 1 1-6 0a3 3 0 0 1 6 0z', 'M20 16a3 3 0 1 1-6 0a3 3 0 0 1 6 0z']),
+        el('span', { text: 'Letra' }),
+      );
+    }
+    if (barLyrics.parentElement !== host) host.appendChild(barLyrics);
   }
 
   // En la pestaña "Letra" de YouTube Music (que no sigue la canción) se añade un botón hacia la letra en vivo.
@@ -610,7 +818,8 @@ function music() {
           slider('Desenfoque de la portada', 'ambBlur', 20, 160, ' px'),
           el('p', { class: 'mk-hint', text: 'Movimiento de los colores del fondo' }),
           segmented('motion', [
-            ['on', 'En movimiento'],
+            ['music', 'Con la música'],
+            ['calm', 'Suave'],
             ['off', 'Quieto'],
           ]),
         ),
@@ -982,6 +1191,8 @@ function music() {
       if (document.hidden) return; // minimizada u oculta: no se gasta en lo visual
       step('portada', updateAmbient);
       step('botones', placeTools);
+      step('letra en la barra', placeBarLyrics);
+      step('ritmo del fondo', updateBeat);
       step('acceso a la letra', placeLyricsCta);
       step('letra', updateLyrics);
       step('logo', () => {
@@ -1005,6 +1216,10 @@ function music() {
       step('navegación', onNavigate);
       if (!document.hidden) step('letra', tickLyrics);
     }, 200);
+
+    // el audio del medidor arranca con el primer clic o tecla (regla de los navegadores)
+    window.addEventListener('pointerdown', wakeBeat, true);
+    window.addEventListener('keydown', wakeBeat, true);
 
     window.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
