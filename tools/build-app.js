@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const read = (name) => fs.readFileSync(path.join(root, name), 'utf8');
+// Se normalizan los saltos de línea: en Windows git puede entregar los archivos con CRLF.
+const read = (name) => fs.readFileSync(path.join(root, name), 'utf8').replace(/\r\n/g, '\n');
 const swap = (text, from, to) => {
   if (!text.includes(from)) throw new Error(`no encuentro "${String(from).slice(0, 70)}"`);
   return text.split(from).join(to);
