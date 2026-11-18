@@ -822,6 +822,15 @@ function music() {
         bottom = Math.max(bottom, window.innerHeight - rect.top);
       }
     });
+    // Con la barra en forma de isla flotante, la letra llega hasta abajo y pasa por detrás de ella.
+    let pad = 0;
+    const island = document.querySelector('ytmusic-player-bar');
+    const islandBox = island ? island.getBoundingClientRect() : null;
+    if (islandBox && islandBox.height > 0 && islandBox.left > 2 && window.innerHeight - islandBox.bottom > 2) {
+      pad = Math.round(window.innerHeight - islandBox.top + 8);
+      bottom = 0;
+    }
+    lyricsBox.style.setProperty('--mk-ly-pad', `${pad}px`);
     // Si el menú lateral está fijo a la izquierda, la letra empieza donde termina.
     let left = 0;
     document.querySelectorAll('#guide-wrapper, #mini-guide-background').forEach((guide) => {

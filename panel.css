@@ -583,7 +583,8 @@ html[data-mk-off] #mk-panel .mk-needs-theme {
   display: none;
   grid-template-columns: minmax(260px, 36%) 1fr;
   gap: clamp(28px, 5vw, 90px);
-  padding: 0 clamp(24px, 6vw, 110px);
+  /* --mk-ly-pad: el hueco de abajo cuando la barra del reproductor flota por encima */
+  padding: 0 clamp(24px, 6vw, 110px) var(--mk-ly-pad, 0px);
   box-sizing: border-box;
   overflow: hidden;
   isolation: isolate;

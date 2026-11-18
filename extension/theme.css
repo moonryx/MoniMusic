@@ -232,12 +232,34 @@ ytmusic-responsive-list-item-renderer:hover {
   background: rgba(255, 255, 255, 0.06) !important;
 }
 
-/* ---------- barra del reproductor (las dos versiones de YouTube Music) ---------- */
+/* ---------- barra del reproductor: una isla flotante ---------- */
+/* Detrás de la isla, la página se desvanece hacia el color de la portada. */
 #player-bar-background {
-  background: transparent !important;
+  background: linear-gradient(180deg, transparent, rgb(var(--mk-tone) / 0.86) 80%) !important;
+  pointer-events: none;
 }
 
-ytmusic-player-bar,
+ytmusic-player-bar {
+  left: 12px !important;
+  right: auto !important;
+  bottom: 10px !important;
+  /* YouTube Music ya le resta el ancho de la barra de desplazamiento: se le quitan además los dos márgenes */
+  width: calc(100% - 24px - var(--mk-scrollbar, 12px)) !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background:
+    linear-gradient(100deg, color-mix(in srgb, var(--mk-accent) 22%, transparent) 0%, transparent 34%, transparent 70%, color-mix(in srgb, var(--mk-accent) 12%, transparent) 100%),
+    var(--mk-bar) !important;
+  -webkit-backdrop-filter: var(--mk-backdrop);
+  backdrop-filter: var(--mk-backdrop);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 44px -14px rgba(0, 0, 0, 0.8),
+    0 0 70px -26px var(--mk-accent);
+}
+
+/* el reproductor pequeño (el otro formato de YouTube Music) conserva su forma */
 ytmusic-miniplayer {
   background: var(--mk-bar) !important;
   -webkit-backdrop-filter: var(--mk-backdrop);
@@ -245,13 +267,121 @@ ytmusic-miniplayer {
   border-top: 1px solid var(--mk-line) !important;
 }
 
+/* Progreso: una línea gruesa del color de la portada sobre el borde de arriba, entre las dos esquinas. */
+ytmusic-player-bar #progress-bar {
+  /* la línea empieza 17 px después del control y mide lo mismo que él: así va de esquina a esquina */
+  left: 3px !important;
+  width: calc(100% - 40px) !important;
+  --paper-slider-height: 4px;
+  --paper-slider-container-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+ytmusic-player-bar #progress-bar #sliderBar,
+ytmusic-player-bar #progress-bar #progressContainer {
+  border-radius: 4px !important;
+}
+
+ytmusic-player-bar #progress-bar #sliderBar {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--mk-accent) 75%, transparent));
+}
+
 ytmusic-player-bar #progress-bar,
 ytmusic-player-bar #volume-slider,
 ytmusic-player-bar #expand-volume-slider {
   --paper-slider-active-color: var(--mk-accent) !important;
-  --paper-slider-knob-color: var(--mk-accent) !important;
-  --paper-slider-knob-start-color: var(--mk-accent) !important;
-  --paper-slider-knob-start-border-color: var(--mk-accent) !important;
+  --paper-slider-knob-color: #fff !important;
+  --paper-slider-knob-start-color: #fff !important;
+  --paper-slider-knob-start-border-color: #fff !important;
+}
+
+/* Play: un círculo blanco con un aro del color de la portada. */
+ytmusic-player-bar #play-pause-button {
+  width: 46px !important;
+  height: 46px !important;
+  margin: 0 9px !important;
+  border-radius: 50%;
+  background: #fff;
+  color: #0b0b10 !important;
+  --iron-icon-fill-color: #0b0b10;
+  --yt-icon-button-icon-color: #0b0b10;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--mk-accent) 32%, transparent), 0 10px 24px -10px var(--mk-accent);
+  transition: transform 0.18s ease, box-shadow 0.25s ease;
+}
+
+ytmusic-player-bar #play-pause-button yt-icon,
+ytmusic-player-bar #play-pause-button svg,
+ytmusic-player-bar #play-pause-button path {
+  fill: #0b0b10 !important;
+  color: #0b0b10 !important;
+}
+
+ytmusic-player-bar #play-pause-button:hover {
+  transform: scale(1.07);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--mk-accent) 36%, transparent), 0 12px 28px -10px var(--mk-accent);
+}
+
+ytmusic-player-bar #play-pause-button:active {
+  transform: scale(0.95);
+}
+
+ytmusic-player-bar .left-controls {
+  padding-left: 6px;
+}
+
+ytmusic-player-bar .time-info {
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.66) !important;
+}
+
+/* La portada es un disco que gira mientras suena la canción. */
+ytmusic-player-bar .thumbnail-image-wrapper {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.16), 0 8px 20px -8px #000, 0 0 26px -8px var(--mk-accent);
+  animation: mk-disc 16s linear infinite;
+  animation-play-state: paused;
+}
+
+ytmusic-player-bar .thumbnail-image-wrapper img {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  object-fit: cover;
+}
+
+ytmusic-player-bar .thumbnail-image-wrapper::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: rgb(var(--mk-tone));
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.4);
+}
+
+:scope[data-mk-playing] ytmusic-player-bar .thumbnail-image-wrapper {
+  animation-play-state: running;
+}
+
+@keyframes mk-disc {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+ytmusic-player-bar .content-info-wrapper .title {
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+ytmusic-player-bar .content-info-wrapper .byline-wrapper,
+ytmusic-player-bar .content-info-wrapper .byline {
+  color: rgba(255, 255, 255, 0.64) !important;
 }
 
 /* ---------- pantalla "Ahora suena" ---------- */
@@ -328,6 +458,14 @@ ytmusic-multi-page-menu-renderer {
 @media (prefers-reduced-motion: reduce) {
   #mk-ambient .mk-layer {
     transition: none !important;
+  }
+
+  ytmusic-player-bar .thumbnail-image-wrapper {
+    animation: none;
+  }
+
+  ytmusic-player-bar #play-pause-button {
+    transition: none;
   }
 }
 
