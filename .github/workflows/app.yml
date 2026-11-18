@@ -1,0 +1,40 @@
+name: App de Windows (Rust)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "preload.js"
+      - "theme.css"
+      - "panel.css"
+      - "main.js"
+      - "tools/build-app.js"
+      - ".github/workflows/app.yml"
+
+jobs:
+  compilar:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generar el script que se inyecta en YouTube Music
+        run: node tools/build-app.js
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app
+
+      - name: Compilar
+        run: cargo build --release --manifest-path app/Cargo.toml
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MoniMusic-windows
+          path: app/target/release/monimusic.exe
+          if-no-files-found: error

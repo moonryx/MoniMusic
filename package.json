@@ -10,7 +10,8 @@
     "extension": "node tools/build-extension.js",
     "instalar": "node tools/install.js",
     "release": "node tools/build-release.js",
-    "icon": "electron tools/make-icon.js"
+    "icon": "electron tools/make-icon.js",
+    "app:inject": "node tools/build-app.js"
   },
   "devDependencies": {
     "electron": "^45.3.3"

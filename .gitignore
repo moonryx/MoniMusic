@@ -1,5 +1,7 @@
 node_modules/
-dist/
+/dist/
 *.log
 assets/opciones/
 assets/logo.gif
+app/src/inject.js
+app/target/
