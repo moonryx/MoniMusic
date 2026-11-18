@@ -28,6 +28,8 @@ js = swap('content', js, `// MoniMusic — se ejecuta dentro de la página (YouT
 js = swap('content', js, `const { ipcRenderer, webFrame } = require('electron');\n\nconst HOME = 'https://music.youtube.com/';\n`, '');
 js = cut('content', js, `// ---------- fuera de YouTube Music (inicio de sesión): botón para volver ----------`, `function music() {`, `music();\n\n`);
 js = swap('content', js, `    ipcRenderer.send('mk:theme', on);\n`, '');
+// en el navegador no hay barra de título propia que pintar
+js = swap('content', js, `    ipcRenderer.send('mk:titlebar', color);\n`, '');
 js = swap('content', js, `    webFrame.setZoomFactor(settings.zoom / 100);\n`, '');
 js = swap(
   'content',

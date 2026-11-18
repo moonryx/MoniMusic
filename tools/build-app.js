@@ -23,6 +23,18 @@ let js = read('preload.js');
 js = swap(js, `const { ipcRenderer, webFrame } = require('electron');\n\nconst HOME = 'https://music.youtube.com/';\n`, '');
 js = cut(js, `// ---------- fuera de YouTube Music (inicio de sesión): botón para volver ----------`, `function music() {`, `music();\n\n`);
 js = swap(js, `    ipcRenderer.send('mk:theme', on);\n`, `    mkTheme(on);\n`);
+// La página no puede hablar con la ventana de Rust: le deja el recado en su propio título un instante
+// ("mk-titlebar:rrggbb") y lo devuelve enseguida. main.rs lo lee y pinta la barra de título.
+js = swap(
+  js,
+  `    ipcRenderer.send('mk:titlebar', color);\n`,
+  `    const mark = 'mk-titlebar:' + color;
+    if (!document.title.startsWith('mk-titlebar:')) paintTitleBar.title = document.title;
+    document.title = mark;
+    setTimeout(() => {
+      if (document.title === mark) document.title = paintTitleBar.title || 'YouTube Music';
+    }, 150);\n`,
+);
 js = swap(js, `    webFrame.setZoomFactor(settings.zoom / 100);\n`, '');
 js = swap(js, `  ipcRenderer.send('mk:theme', enabled());`, `  mkTheme(enabled());`);
 js = swap(

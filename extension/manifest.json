@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MoniMusic",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Tema con los colores de la portada, panel de diseño y letra sincronizada para YouTube Music.",
   "icons": {
     "128": "assets/icon.png"

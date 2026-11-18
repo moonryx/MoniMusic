@@ -53,6 +53,7 @@ function music() {
     accentAuto: true,
     accent: '#c4a1ff',
     bg: 'cover',
+    motion: 'on',
     vivid: 70,
     ambBright: 74,
     ambBlur: 90,
@@ -165,6 +166,7 @@ function music() {
       root.style.setProperty('--mk-amb-bright', String(settings.ambBright / 100));
       root.style.setProperty('--mk-amb-blur', `${settings.ambBlur}px`);
       root.dataset.mkBg = settings.bg;
+      root.dataset.mkMotion = settings.motion === 'off' ? 'off' : 'on';
       root.dataset.mkFx = settings.fx === 'glass' ? 'glass' : 'fast';
       applyTone();
       if (settings.font === 'default') {
@@ -174,7 +176,17 @@ function music() {
         root.dataset.mkFont = '1';
       }
     }
+    if (!on) paintTitleBar('default');
     applyAccent();
+  }
+
+  // La app de escritorio pinta la barra de título de la ventana (la de Windows) con el color de la canción.
+  // Aquí solo se avisa el color ("rrggbb", o "default" para el de siempre); cada versión lo entrega a su manera.
+  let barColor = '';
+
+  function paintTitleBar(color) {
+    if (color === barColor) return;
+    barColor = color;
   }
 
   // Color de las barras y pantallas en modo rápido: sale de la portada (fondo "Portada") o del tema.
@@ -192,6 +204,15 @@ function music() {
     const scaled = (target) => rgb.map((value) => Math.round((value / peak) * Math.min(target, Math.max(peak, 24)))).join(' ');
     root.style.setProperty('--mk-tone', scaled(62));
     root.style.setProperty('--mk-tone-hi', scaled(128));
+    // la barra de título toma el mismo color que la barra de arriba
+    if (enabled()) {
+      paintTitleBar(
+        scaled(62)
+          .split(' ')
+          .map((value) => Number(value).toString(16).padStart(2, '0'))
+          .join(''),
+      );
+    }
   }
 
   const controls = [];
@@ -270,6 +291,8 @@ function music() {
       ambient.appendChild(layer);
       layers.push(layer);
     }
+    // manchas de color que se pasean por el fondo (ajuste "Movimiento")
+    for (let i = 1; i <= 3; i += 1) ambient.appendChild(el('div', { class: `mk-blob mk-b${i}` }));
     ambient.appendChild(el('div', { class: 'mk-veil' }));
     document.body.prepend(ambient);
   }
@@ -544,6 +567,11 @@ function music() {
           slider('Intensidad del color', 'vivid', 0, 100, '%'),
           slider('Brillo de la portada', 'ambBright', 30, 120, '%'),
           slider('Desenfoque de la portada', 'ambBlur', 20, 160, ' px'),
+          el('p', { class: 'mk-hint', text: 'Movimiento de los colores del fondo' }),
+          segmented('motion', [
+            ['on', 'En movimiento'],
+            ['off', 'Quieto'],
+          ]),
         ),
         section(
           'Efectos',
