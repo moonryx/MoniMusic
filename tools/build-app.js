@@ -71,7 +71,10 @@ lyrics = swap(lyrics, `    headers: { 'User-Agent': 'MoniMusic/1.0 (reproductor 
 const logo = `data:image/png;base64,${fs.readFileSync(path.join(root, 'assets', 'logo.png')).toString('base64')}`;
 const MONI = { theme: read('theme.css'), panel: read('panel.css'), logo };
 
-const out = `// MoniMusic (app de Rust) — script que se inyecta en YouTube Music.
+// La primera línea lleva un número de compilación: la app usa el inject.js que haya junto al .exe
+// solo si es igual de nuevo o más nuevo que el que trae dentro.
+const out = `// mk-build: ${Date.now()}
+// MoniMusic (app de Rust) — script que se inyecta en YouTube Music.
 // Archivo generado por tools/build-app.js: edita preload.js, theme.css o panel.css, no este.
 (() => {
   if (window.top !== window || location.hostname !== 'music.youtube.com' || window.__moniMusic) return;

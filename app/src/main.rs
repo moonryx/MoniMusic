@@ -36,6 +36,30 @@ fn open_in_browser(url: &Url) {
         .spawn();
 }
 
+/// Número de compilación que tools/build-app.js pone en la primera línea de inject.js ("// mk-build: 123").
+fn build_stamp(script: &str) -> u64 {
+    script
+        .lines()
+        .next()
+        .and_then(|line| line.strip_prefix("// mk-build:"))
+        .and_then(|number| number.trim().parse().ok())
+        .unwrap_or(0)
+}
+
+/// Lo que se inyecta en la página. Si junto al .exe hay un `inject.js` igual de nuevo o más nuevo que el que
+/// viene dentro del programa, se usa ese: así la interfaz se actualiza cambiando un archivo de texto,
+/// sin tener que reemplazar el ejecutable.
+fn inject_script() -> String {
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|folder| folder.join("inject.js")))
+        .and_then(|path| std::fs::read_to_string(path).ok());
+    match beside {
+        Some(script) if script.contains("__moniMusic") && build_stamp(&script) >= build_stamp(INJECT) => script,
+        _ => INJECT.to_string(),
+    }
+}
+
 /// La página avisa el color de la canción cambiando un instante su título a "mk-titlebar:rrggbb"
 /// (o "mk-titlebar:default"); con eso se pinta la barra de título de Windows del mismo color.
 const BAR_MARK: &str = "mk-titlebar:";
@@ -94,7 +118,7 @@ fn main() {
                 .inner_size(1320.0, 860.0)
                 .min_inner_size(480.0, 560.0)
                 .theme(Some(Theme::Dark))
-                .initialization_script(INJECT)
+                .initialization_script(inject_script())
                 .on_document_title_changed(|window, title| {
                     if let Some(color) = title.strip_prefix(BAR_MARK) {
                         #[cfg(windows)]
