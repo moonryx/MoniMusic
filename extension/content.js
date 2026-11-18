@@ -231,7 +231,30 @@ function music() {
 
   logoFiles = { still: chrome.runtime.getURL('assets/logo.png') };
 
-  const video = () => document.querySelector('video');
+  // Lo que marca la barra del reproductor (segundos transcurridos y duración): es lo que ve la persona.
+  function barTimes() {
+    const bar = document.querySelector('#progress-bar');
+    if (!bar) return null;
+    const total = Number(bar.getAttribute('aria-valuemax'));
+    const now = Number(bar.getAttribute('aria-valuenow'));
+    if (!Number.isFinite(total) || total <= 0) return null;
+    return { now: Number.isFinite(now) ? now : 0, total };
+  }
+
+  // El <video> que está sonando. YouTube Music a veces tiene más de uno (deja lista la siguiente canción en otro):
+  // manda el que coincide con la barra del reproductor.
+  function video() {
+    const all = Array.from(document.querySelectorAll('video'));
+    if (all.length <= 1) return all[0] || null;
+    const bar = barTimes();
+    if (bar) {
+      const sameLength = all.filter((media) => Math.abs(media.duration - bar.total) < 2);
+      const sameMoment = sameLength.filter((media) => Math.abs(media.currentTime - bar.now) < 4);
+      if (sameMoment.length) return sameMoment[0];
+      if (sameLength.length) return sameLength[0];
+    }
+    return all.find((media) => !media.paused && !media.ended) || all[0];
+  }
   const adPlaying = () => Boolean(document.querySelector('.ad-showing'));
 
   // ---------- fondo ambiental ----------
@@ -562,10 +585,11 @@ function music() {
   }
 
   // ---------- letra sincronizada ----------
-  const ly = { key: '', lines: [], status: 'idle', active: -1, nodes: [] };
+  const ly = { key: '', lines: [], status: 'idle', active: -1, nodes: [], hold: 0 };
   let lyricsBox = null;
   let lyScroll = null;
   let lyCover = null;
+  let lyBg = null;
   let lyTitle = null;
   let lyArtist = null;
   let lyNote = null;
@@ -593,8 +617,10 @@ function music() {
       artist = byline ? byline.textContent.split('•')[0].trim() : '';
     }
     if (!title) return null;
+    // La duración sale de la barra del reproductor; el <video> queda de respaldo.
+    const times = barTimes();
     const media = video();
-    const duration = media && Number.isFinite(media.duration) ? media.duration : 0;
+    const duration = times ? times.total : media && Number.isFinite(media.duration) ? media.duration : 0;
     return { title, artist: artist || '', album, duration };
   }
 
@@ -609,16 +635,48 @@ function music() {
     return lines.sort((a, b) => a.t - b.t);
   }
 
-  function showMessage(text) {
+  function setState(state) {
+    ly.status = state;
+    if (lyricsBox) lyricsBox.setAttribute('data-state', state);
+  }
+
+  function setArt(url) {
+    [lyCover, lyBg].forEach((img) => {
+      if (!img) return;
+      if (url) {
+        if (img.getAttribute('src') !== url) img.src = url;
+      } else {
+        img.removeAttribute('src');
+      }
+    });
+  }
+
+  // Aviso en el lugar de la letra, con unas barras de sonido que se mueven mientras suena la canción.
+  function showMessage(text, hint) {
     ly.nodes = [];
     ly.active = -1;
-    lyScroll.replaceChildren(el('p', { class: 'mk-ly-msg', text }));
+    const wave = el('div', { class: 'mk-ly-wave', 'aria-hidden': 'true' });
+    for (let i = 0; i < 18; i += 1) {
+      const speed = (0.62 + ((i * 7) % 5) * 0.13).toFixed(2);
+      const shift = ((i * 0.37) % 1.1).toFixed(2);
+      wave.appendChild(el('i', { style: `animation-duration:${speed}s;animation-delay:-${shift}s` }));
+    }
+    lyScroll.replaceChildren(
+      el(
+        'div',
+        { class: 'mk-ly-empty' },
+        wave,
+        el('p', { class: 'mk-ly-msg', text }),
+        hint ? el('p', { class: 'mk-ly-hint', text: hint }) : null,
+      ),
+    );
+    lyScroll.scrollTop = 0;
   }
 
   function renderLines(synced) {
     ly.active = -1;
     ly.nodes = ly.lines.map((line) => {
-      const node = el('p', { class: `mk-line${synced ? '' : ' mk-plain'}`, text: line.text || '♪' });
+      const node = el('p', { class: `mk-line${synced ? '' : ' mk-plain'}`, text: line.text || (synced ? '♪' : ' ') });
       if (synced) {
         node.addEventListener('click', () => {
           const media = video();
@@ -636,21 +694,23 @@ function music() {
     const info = trackInfo();
     if (!info) {
       if (ly.status !== 'empty') {
-        ly.status = 'empty';
+        setState('empty');
         ly.key = '';
         lyTitle.textContent = 'MoniMusic';
         lyArtist.textContent = '';
-        lyCover.removeAttribute('src');
-        showMessage('Pon una canción y aquí verás su letra siguiendo la música.');
+        lyNote.textContent = '';
+        setArt(null);
+        showMessage('Pon una canción', 'Aquí verás su letra siguiendo la música.');
       }
       return;
     }
     if (adPlaying() || !info.duration) {
       // Se espera a que empiece la canción de verdad; si aún no hay nada en pantalla, se avisa.
       if (ly.status === 'idle' || ly.status === 'empty') {
-        ly.status = 'waiting';
+        setState('waiting');
         ly.key = '';
-        showMessage(adPlaying() ? 'La letra aparece en cuanto termine el anuncio.' : 'Cargando la canción…');
+        if (adPlaying()) showMessage('Un momento…', 'La letra aparece en cuanto termine el anuncio.');
+        else showMessage('Cargando la canción…');
       }
       return;
     }
@@ -661,11 +721,11 @@ function music() {
     const key = `${info.title}|${info.artist}|${Math.round(info.duration)}`;
     if (key === ly.key) return;
     ly.key = key;
-    ly.status = 'loading';
+    setState('loading');
     ly.lines = [];
     lyTitle.textContent = info.title;
     lyArtist.textContent = info.artist;
-    if (currentArt) lyCover.src = currentArt;
+    setArt(currentArt);
     lyNote.textContent = '';
     showMessage('Buscando la letra…');
 
@@ -681,17 +741,17 @@ function music() {
       ly.lines = parseLrc(result.synced);
     }
     if (ly.lines.length) {
-      ly.status = 'synced';
-      lyNote.textContent = 'Letra sincronizada · LRCLIB';
+      setState('synced');
+      lyNote.textContent = 'Letra en vivo';
       renderLines(true);
     } else if (result && result.plain) {
-      ly.status = 'plain';
+      setState('plain');
       ly.lines = result.plain.split(/\r?\n/).map((text) => ({ t: 0, text }));
-      lyNote.textContent = 'Letra sin tiempos · LRCLIB';
+      lyNote.textContent = result.from ? `Letra de la versión de ${result.from}` : 'Letra sin tiempos';
       renderLines(false);
     } else {
-      ly.status = 'none';
-      showMessage('No encontré la letra de esta canción.');
+      setState('none');
+      showMessage('Esta canción no tiene letra', 'No está en el catálogo de letras. Sigue sonando igual.');
     }
   }
 
@@ -720,8 +780,21 @@ function music() {
     lyricsBox.style.top = `${Math.round(top)}px`;
     lyricsBox.style.bottom = `${Math.round(bottom)}px`;
 
-    if (ly.status !== 'synced') return;
+    // La portada a veces llega un instante después que el título.
+    if (currentArt && ly.status !== 'empty') setArt(currentArt);
+
     const media = video();
+    if (ly.status === 'plain') {
+      // Sin tiempos no se puede marcar línea por línea: el texto baja al ritmo de la canción.
+      // Si la persona mueve la letra a mano, se le deja en paz unos segundos.
+      if (media && media.duration > 0 && !adPlaying() && Date.now() > ly.hold) {
+        const room = lyScroll.scrollHeight - lyScroll.clientHeight;
+        const target = Math.round(room * Math.min(1, media.currentTime / media.duration));
+        if (Math.abs(target - lyScroll.scrollTop) > 6) lyScroll.scrollTo({ top: target, behavior: 'smooth' });
+      }
+      return;
+    }
+    if (ly.status !== 'synced') return;
     if (!media || adPlaying()) return;
     const now = media.currentTime + 0.25;
     let index = -1;
@@ -737,6 +810,10 @@ function music() {
     });
     const current = ly.nodes[index];
     if (current) {
+      // La línea se va "llenando" de luz durante lo que dura (hasta que empieza la siguiente).
+      const next = ly.lines[index + 1];
+      const span = next ? next.t - ly.lines[index].t : 5;
+      current.style.setProperty('--mk-dur', `${Math.min(12, Math.max(0.5, span)).toFixed(2)}s`);
       lyScroll.scrollTo({
         top: current.offsetTop - lyScroll.clientHeight / 2 + current.clientHeight / 2,
         behavior: 'smooth',
@@ -746,23 +823,43 @@ function music() {
 
   function buildLyrics() {
     if (document.getElementById('mk-lyrics')) return;
+    lyBg = el('img', { alt: '' });
     lyCover = el('img', { class: 'mk-ly-cover', alt: '' });
     lyTitle = el('div', { class: 'mk-ly-title' });
     lyArtist = el('div', { class: 'mk-ly-artist' });
     lyNote = el('div', { class: 'mk-ly-note' });
     lyScroll = el('div', { class: 'mk-ly-scroll' });
+    ['wheel', 'touchmove', 'pointerdown'].forEach((type) => {
+      lyScroll.addEventListener(type, () => { ly.hold = Date.now() + 7000; }, { passive: true });
+    });
+    const close = el('button', {
+      class: 'mk-ly-close',
+      type: 'button',
+      'aria-label': 'Cerrar la letra',
+      onclick: () => toggleLyrics(false),
+    });
+    close.appendChild(icon(['M6 6l12 12', 'M18 6L6 18']));
     lyricsBox = el(
       'section',
-      { id: 'mk-lyrics', 'aria-label': 'Letra sincronizada' },
-      el('div', { class: 'mk-ly-side' }, lyCover, lyTitle, lyArtist, lyNote),
+      { id: 'mk-lyrics', 'aria-label': 'Letra sincronizada', 'data-state': 'idle' },
+      // fondo: la misma portada, muy desenfocada
+      el('div', { class: 'mk-ly-bg', 'aria-hidden': 'true' }, lyBg),
+      el(
+        'div',
+        { class: 'mk-ly-side' },
+        // portada con un disco que asoma y gira mientras suena
+        el('div', { class: 'mk-ly-art' }, el('div', { class: 'mk-ly-disc', 'aria-hidden': 'true' }), lyCover),
+        lyTitle,
+        lyArtist,
+        el(
+          'div',
+          { class: 'mk-ly-meta' },
+          el('span', { class: 'mk-ly-eq', 'aria-hidden': 'true' }, el('i'), el('i'), el('i'), el('i')),
+          lyNote,
+        ),
+      ),
       lyScroll,
-      el('button', {
-        class: 'mk-ly-close',
-        type: 'button',
-        text: '✕',
-        'aria-label': 'Cerrar la letra',
-        onclick: () => toggleLyrics(false),
-      }),
+      close,
     );
     document.body.appendChild(lyricsBox);
   }

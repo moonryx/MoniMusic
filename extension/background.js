@@ -14,6 +14,31 @@ const cleanTitle = (title) =>
 // "Hillkidd y Mi Compa el Chino" -> "Hillkidd"
 const firstArtist = (artist) => artist.split(/,|&|•| feat\.? | ft\.? | x | y | e | con /i)[0].trim();
 
+// "Canción (Stonne Versión)" o "Canción - En vivo" -> "Canción": el título de la canción original
+const baseTitle = (title) =>
+  title
+    .replace(/\s*[([][^)\]]*[)\]]/g, ' ')
+    .replace(/\s+-\s+(en vivo|live|remix|versi[oó]n|version|cover|ac[uú]stic[oa]|acoustic|sped up|slowed|remaster).*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim() || title;
+
+// para comparar títulos sin tildes, mayúsculas ni signos
+const plainText = (text) =>
+  String(text || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+// letra con tiempos -> solo el texto
+const withoutStamps = (lrc) =>
+  String(lrc || '')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\[[^\]]*\]/g, '').trim())
+    .join('\n')
+    .trim();
+
 async function lrclib(pathname, params) {
   const response = await fetch(`${LRCLIB}${pathname}?${new URLSearchParams(params)}`, {
     signal: AbortSignal.timeout(9000),
@@ -27,7 +52,20 @@ async function findLyrics({ title, artist, duration }) {
   const by = firstArtist(String(artist || ''));
   const length = Number(duration) || 0;
   if (!track) return null;
-  const pack = (hit) => (hit ? { synced: hit.syncedLyrics || null, plain: hit.plainLyrics || null } : null);
+  const pack = (hit) => ({ synced: hit.syncedLyrics || null, plain: hit.plainLyrics || null, artist: hit.artistName || '' });
+  const closest = (list) =>
+    list.sort((a, b) => Math.abs((a.duration || 0) - length) - Math.abs((b.duration || 0) - length))[0];
+  // De una lista de resultados: la que tenga tiempos y dure lo mismo; si no, solo el texto de la más parecida
+  // (con otra duración los tiempos no cuadrarían).
+  const pick = (hits) => {
+    const synced = hits.filter((hit) => hit.syncedLyrics);
+    const near = synced.filter((hit) => !length || Math.abs((hit.duration || 0) - length) <= 4);
+    if (near.length) return pack(closest(near));
+    const withText = hits.filter((hit) => hit.syncedLyrics || hit.plainLyrics);
+    if (!withText.length) return null;
+    const hit = closest(withText);
+    return { synced: null, plain: hit.plainLyrics || withoutStamps(hit.syncedLyrics) || null, artist: hit.artistName || '' };
+  };
 
   // 1) coincidencia exacta por título, artista y duración
   if (by && length) {
@@ -39,25 +77,39 @@ async function findLyrics({ title, artist, duration }) {
     }
   }
 
-  // 2) búsqueda: la que tenga tiempos y la duración más parecida
+  // 2) búsqueda por título y artista
   try {
     const query = by ? { track_name: track, artist_name: by } : { q: track };
     let hits = (await lrclib('/search', query)) || [];
     // Si con título y artista no sale nada, una búsqueda libre suele encontrarla.
-    if (!hits.length && by) hits = (await lrclib('/search', { q: `${track} ${by}` })) || [];
-    const closest = (list) =>
-      list.sort((a, b) => Math.abs((a.duration || 0) - length) - Math.abs((b.duration || 0) - length))[0];
-    const synced = hits.filter((hit) => hit.syncedLyrics);
-    const near = synced.filter((hit) => !length || Math.abs((hit.duration || 0) - length) <= 4);
-    if (near.length) return pack(closest(near));
-    const plain = hits.filter((hit) => hit.plainLyrics);
-    // con otra duración los tiempos no cuadrarían: se muestra solo el texto
-    if (synced.length || plain.length) {
-      const hit = closest(synced.length ? synced : plain);
-      return { synced: null, plain: hit.plainLyrics || null };
+    if (!hits.length && by) {
+      const wanted = [plainText(track), plainText(baseTitle(track))];
+      hits = ((await lrclib('/search', { q: `${track} ${by}` })) || []).filter((hit) => wanted.includes(plainText(hit.trackName)));
     }
+    const found = pick(hits);
+    if (found) return found;
   } catch {
     /* sin conexión o sin resultados */
+  }
+
+  // 3) versiones y covers ("Canción (Stonne Versión)", "Canción - En vivo"): se busca la canción original.
+  //    Si la letra sale de la versión de otro artista, se avisa de quién es (from).
+  const base = baseTitle(track);
+  if (base !== track) {
+    try {
+      const wanted = plainText(base);
+      const same = (hits) => (hits || []).filter((hit) => plainText(hit.trackName) === wanted);
+      let other = false;
+      let hits = by ? same(await lrclib('/search', { track_name: base, artist_name: by })) : [];
+      if (!hits.length) {
+        hits = same(await lrclib('/search', { track_name: base }));
+        other = true;
+      }
+      const found = pick(hits);
+      if (found) return other ? { ...found, from: found.artist } : found;
+    } catch {
+      /* sin conexión o sin resultados */
+    }
   }
   return null;
 }

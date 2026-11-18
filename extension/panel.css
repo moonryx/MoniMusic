@@ -582,21 +582,22 @@ html[data-mk-off] #mk-panel .mk-needs-theme {
   /* por encima de la página y por debajo de la barra superior y del reproductor */
   z-index: 3;
   display: none;
-  grid-template-columns: minmax(240px, 34%) 1fr;
-  gap: clamp(24px, 5vw, 80px);
+  grid-template-columns: minmax(260px, 36%) 1fr;
+  gap: clamp(28px, 5vw, 90px);
   padding: 0 clamp(24px, 6vw, 110px);
   box-sizing: border-box;
+  overflow: hidden;
+  isolation: isolate;
   color: #fff;
   font-family: 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
-  background: var(--mk-page, linear-gradient(180deg, #241a4a, #0f0b22));
-  -webkit-backdrop-filter: var(--mk-backdrop-strong, none);
-  backdrop-filter: var(--mk-backdrop-strong, none);
+  /* fondo propio y opaco: la página de atrás ya no se transparenta */
+  background: radial-gradient(90% 80% at 22% 30%, color-mix(in srgb, var(--mk-accent, #c4a1ff) 30%, #0b0a12), #0b0a12 70%);
   -webkit-app-region: no-drag;
 }
 
 html[data-mk-lyrics] #mk-lyrics {
   display: grid;
-  animation: mk-ly-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: mk-ly-in 0.36s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes mk-ly-in {
@@ -606,20 +607,97 @@ html[data-mk-lyrics] #mk-lyrics {
   }
 }
 
+/* Fondo: la portada muy desenfocada, moviéndose despacio. La imagen es pequeña y se agranda con transform,
+   así el desenfoque sale barato. */
+#mk-lyrics .mk-ly-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#mk-lyrics .mk-ly-bg img {
+  position: absolute;
+  left: 35%;
+  top: 35%;
+  width: 30%;
+  height: 30%;
+  object-fit: cover;
+  filter: blur(22px) saturate(1.75) brightness(0.95);
+  transform: scale(4.2);
+  animation: mk-ly-drift 40s ease-in-out infinite alternate;
+}
+
+#mk-lyrics .mk-ly-bg img:not([src]) {
+  display: none;
+}
+
+#mk-lyrics .mk-ly-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(9, 8, 15, 0.12), rgba(9, 8, 15, 0.44) 55%, rgba(9, 8, 15, 0.62)),
+    linear-gradient(180deg, rgba(9, 8, 15, 0.1), rgba(9, 8, 15, 0.42));
+}
+
+@keyframes mk-ly-drift {
+  from {
+    transform: scale(4.2) rotate(0deg);
+  }
+  to {
+    transform: scale(4.9) rotate(7deg);
+  }
+}
+
 #mk-lyrics .mk-ly-side {
   align-self: center;
   min-width: 0;
+  padding-right: 9%;
+}
+
+#mk-lyrics .mk-ly-art {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1;
+}
+
+/* Disco de vinilo que asoma detrás de la portada y gira mientras suena. */
+#mk-lyrics .mk-ly-disc {
+  position: absolute;
+  top: 5%;
+  right: -27%;
+  width: 90%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #0b0b10 0 2.2%, transparent 2.4%),
+    radial-gradient(circle, color-mix(in srgb, var(--mk-accent, #c4a1ff) 80%, #fff) 0 15%, #0d0d12 15.4% 17%, transparent 17.3%),
+    conic-gradient(from 20deg, rgba(255, 255, 255, 0) 0 10%, rgba(255, 255, 255, 0.34) 18%, rgba(255, 255, 255, 0) 27% 60%, rgba(255, 255, 255, 0.26) 68%, rgba(255, 255, 255, 0) 77%),
+    repeating-radial-gradient(circle, #26262e 0 1.5px, #0d0d12 1.5px 3.5px);
+  box-shadow: 0 24px 60px -24px #000, inset 0 0 0 1.5px rgba(255, 255, 255, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.5);
+  animation: mk-ly-spin 7s linear infinite;
+  animation-play-state: paused;
+}
+
+@keyframes mk-ly-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 #mk-lyrics .mk-ly-cover {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
-  max-width: 380px;
-  aspect-ratio: 1;
+  height: 100%;
   object-fit: cover;
   border-radius: calc(var(--mk-radius, 14px) + 6px);
   background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.9), 0 0 90px -34px var(--mk-accent, #c4a1ff);
 }
 
 #mk-lyrics .mk-ly-cover:not([src]) {
@@ -627,11 +705,11 @@ html[data-mk-lyrics] #mk-lyrics {
 }
 
 #mk-lyrics .mk-ly-title {
-  margin-top: 22px;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  margin-top: 26px;
+  font-size: clamp(21px, 1.9vw, 30px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -639,20 +717,88 @@ html[data-mk-lyrics] #mk-lyrics {
 }
 
 #mk-lyrics .mk-ly-artist {
-  margin-top: 6px;
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.66);
+  margin-top: 8px;
+  font-size: 15.5px;
+  color: rgba(255, 255, 255, 0.68);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+#mk-lyrics .mk-ly-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  min-height: 16px;
+}
+
+#mk-lyrics .mk-ly-meta:has(.mk-ly-note:empty) {
+  visibility: hidden;
+}
+
+/* barritas de sonido: se mueven solo mientras suena la canción */
+#mk-lyrics .mk-ly-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+}
+
+#mk-lyrics .mk-ly-eq i,
+#mk-lyrics .mk-ly-wave i {
+  display: block;
+  height: 100%;
+  transform-origin: bottom;
+  transform: scaleY(0.2);
+  animation: mk-ly-bar 0.8s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
+#mk-lyrics .mk-ly-eq i {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--mk-accent, #c4a1ff);
+}
+
+#mk-lyrics .mk-ly-eq i:nth-child(2) {
+  animation-duration: 0.62s;
+  animation-delay: -0.3s;
+}
+
+#mk-lyrics .mk-ly-eq i:nth-child(3) {
+  animation-duration: 0.95s;
+  animation-delay: -0.55s;
+}
+
+#mk-lyrics .mk-ly-eq i:nth-child(4) {
+  animation-duration: 0.7s;
+  animation-delay: -0.15s;
+}
+
+html[data-mk-playing] #mk-lyrics .mk-ly-disc,
+html[data-mk-playing] #mk-lyrics .mk-ly-eq i,
+html[data-mk-playing] #mk-lyrics .mk-ly-wave i {
+  animation-play-state: running;
+}
+
+@keyframes mk-ly-bar {
+  from {
+    transform: scaleY(0.16);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
 #mk-lyrics .mk-ly-note {
-  margin-top: 14px;
   font-size: 11.5px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.58);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #mk-lyrics .mk-ly-scroll {
@@ -666,62 +812,140 @@ html[data-mk-lyrics] #mk-lyrics {
 
 #mk-lyrics .mk-line {
   margin: 0 0 22px;
-  font-size: clamp(22px, 2.5vw, 36px);
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
+  font-size: clamp(22px, 2.5vw, 38px);
+  font-weight: 800;
+  line-height: 1.22;
+  letter-spacing: -0.02em;
   color: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transform-origin: left center;
-  transition: color 0.35s ease, transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: color 0.4s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
   text-wrap: balance;
 }
 
 #mk-lyrics .mk-line:hover {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.66);
 }
 
 #mk-lyrics .mk-line.mk-past {
-  color: rgba(255, 255, 255, 0.42);
+  color: rgba(255, 255, 255, 0.2);
 }
 
+/* la que viene justo después se adelanta un poco */
+#mk-lyrics .mk-line.mk-active + .mk-line {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* La línea que suena: grande, con brillo del color de la portada, y se va llenando de luz de izquierda a derecha
+   durante el tiempo que dura (--mk-dur lo pone el código). */
 #mk-lyrics .mk-line.mk-active {
-  color: #fff;
-  transform: scale(1.04);
-  text-shadow: 0 0 34px color-mix(in srgb, var(--mk-accent, #c4a1ff) 60%, transparent);
+  color: transparent;
+  transform: scale(1.06);
+  background: linear-gradient(90deg, #fff 0 46%, rgba(255, 255, 255, 0.4) 54% 100%) 100% 0 / 220% 100% no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--mk-accent, #c4a1ff) 55%, transparent));
+  animation: mk-ly-fill var(--mk-dur, 3s) linear forwards;
+}
+
+@keyframes mk-ly-fill {
+  to {
+    background-position: 0 0;
+  }
+}
+
+html:not([data-mk-playing]) #mk-lyrics .mk-line.mk-active {
+  animation-play-state: paused;
+}
+
+/* Letra sin tiempos: texto corrido que baja al ritmo de la canción. */
+#mk-lyrics[data-state='plain'] .mk-ly-scroll {
+  padding: 30vh 12px 30vh 0;
 }
 
 #mk-lyrics .mk-line.mk-plain {
-  font-size: clamp(17px, 1.6vw, 22px);
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: clamp(18px, 1.7vw, 24px);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.86);
   cursor: default;
   margin-bottom: 8px;
+  transform: none;
+}
+
+/* Avisos (buscando, sin letra, sin canción): barras de sonido y un texto grande. */
+#mk-lyrics:not([data-state='synced']):not([data-state='plain']) .mk-ly-scroll {
+  display: grid;
+  align-content: center;
+  padding: 0;
+  overflow: hidden;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+#mk-lyrics .mk-ly-empty {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+}
+
+#mk-lyrics .mk-ly-wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: clamp(54px, 9vh, 88px);
+  margin-bottom: 10px;
+}
+
+#mk-lyrics .mk-ly-wave i {
+  width: 6px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #fff, var(--mk-accent, #c4a1ff));
+  opacity: 0.9;
 }
 
 #mk-lyrics .mk-ly-msg {
   margin: 0;
-  font-size: clamp(18px, 2vw, 26px);
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
+  font-size: clamp(24px, 2.6vw, 40px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: #fff;
+  text-wrap: balance;
+}
+
+#mk-lyrics .mk-ly-hint {
+  margin: 0;
+  font-size: clamp(14px, 1.15vw, 17px);
+  color: rgba(255, 255, 255, 0.62);
 }
 
 #mk-lyrics .mk-ly-close {
   position: absolute;
   top: 18px;
   right: 22px;
-  width: 36px;
-  height: 36px;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
-  font-size: 15px;
   cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+#mk-lyrics .mk-ly-close svg {
+  width: 17px;
+  height: 17px;
 }
 
 #mk-lyrics .mk-ly-close:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
 }
 
 @media (max-width: 860px) {
@@ -739,11 +963,26 @@ html[data-mk-lyrics] #mk-lyrics {
   #mk-scrim,
   #mk-fab,
   #mk-lyrics-btn,
-  #mk-lyrics .mk-line {
+  #mk-lyrics .mk-line,
+  #mk-lyrics .mk-ly-close {
     transition: none;
   }
 
-  html[data-mk-lyrics] #mk-lyrics {
+  html[data-mk-lyrics] #mk-lyrics,
+  #mk-lyrics .mk-ly-bg img,
+  #mk-lyrics .mk-ly-disc,
+  #mk-lyrics .mk-ly-eq i,
+  #mk-lyrics .mk-ly-wave i {
     animation: none;
+  }
+
+  #mk-lyrics .mk-ly-eq i,
+  #mk-lyrics .mk-ly-wave i {
+    transform: scaleY(0.6);
+  }
+
+  #mk-lyrics .mk-line.mk-active {
+    animation: none;
+    background-position: 0 0;
   }
 }
