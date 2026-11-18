@@ -357,34 +357,24 @@ ytmusic-carousel-shelf-renderer #next-items-button:hover {
   transform: scale(1.08);
 }
 
-/* Filas de "Selección rápida" y similares: cada una es un mosaico con la portada pegada a la izquierda. */
+/* Filas de "Selección rápida" y similares: mosaicos discretos, con aire alrededor de la portada.
+   La cuadrícula de YouTube Music trae filas fijas de 48 px; aquí pasan a 60 px y se juntan un poco. */
+ytmusic-carousel-shelf-renderer #items:has(> ytmusic-responsive-list-item-renderer) {
+  grid-template-rows: repeat(4, 60px) !important;
+  row-gap: 8px !important;
+  height: auto !important;
+}
+
 ytmusic-carousel-shelf-renderer ytmusic-responsive-list-item-renderer {
-  overflow: hidden;
-  border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.055) !important;
-  box-shadow: inset 0 0 0 1px var(--mk-line);
-  transition: background-color 0.2s ease, box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  height: 48px !important;
+  padding: 6px 8px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  transition: background-color 0.25s ease;
 }
 
 ytmusic-carousel-shelf-renderer ytmusic-responsive-list-item-renderer:hover {
-  background: color-mix(in srgb, var(--mk-accent) 20%, rgba(255, 255, 255, 0.07)) !important;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mk-accent) 60%, transparent), 0 12px 26px -16px var(--mk-accent);
-  transform: translateY(-2px);
-}
-
-ytmusic-carousel-shelf-renderer ytmusic-responsive-list-item-renderer ytmusic-thumbnail-renderer yt-img-shadow,
-ytmusic-carousel-shelf-renderer ytmusic-responsive-list-item-renderer ytmusic-thumbnail-renderer img,
-ytmusic-carousel-shelf-renderer ytmusic-responsive-list-item-renderer ytmusic-item-thumbnail-overlay-renderer {
-  border-radius: 0 !important;
-}
-
-/* la portada va pegada al borde del mosaico sin cambiar el ancho de la fila */
-ytmusic-carousel-shelf-renderer ytmusic-responsive-list-item-renderer .left-items {
-  margin-left: -8px !important;
-}
-
-ytmusic-carousel-shelf-renderer ytmusic-responsive-list-item-renderer .title {
-  font-weight: 700 !important;
+  background: color-mix(in srgb, var(--mk-accent) 9%, rgba(255, 255, 255, 0.085)) !important;
 }
 
 /* Tarjetas (álbumes, listas, mixes): la portada hace un zoom suave y se le enciende un aro del color de la portada. */
