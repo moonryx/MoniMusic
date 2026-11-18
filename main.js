@@ -422,6 +422,21 @@ function createWindow() {
           await wait(7000);
           fs.writeFileSync(`${shot}.click.json`, JSON.stringify({ target, events, url: wc.getURL().slice(0, 120) }, null, 2));
         }
+        // --shot-hover=selector: deja el mouse encima de ese elemento (para ver los efectos al pasar el cursor).
+        const hoverOn = arg('shot-hover');
+        if (hoverOn) {
+          const spot = await wc.executeJavaScript(`(() => {
+            const node = document.querySelector(${JSON.stringify(hoverOn)});
+            if (!node) return null;
+            const r = node.getBoundingClientRect();
+            return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+          })()`);
+          if (spot) {
+            wc.sendInputEvent({ type: 'mouseMove', x: spot.x - 3, y: spot.y - 3 });
+            wc.sendInputEvent({ type: 'mouseMove', x: spot.x, y: spot.y });
+            await wait(900);
+          }
+        }
         await wait(delay);
         const image = await wc.capturePage();
         fs.writeFileSync(shot, image.toPNG());
