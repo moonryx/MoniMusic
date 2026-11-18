@@ -1,6 +1,7 @@
 // Arma las descargas de una versión en dist/:
 //   MoniMusic-<versión>-windows.zip    la app (MoniMusic.exe) con su instalador, que no necesita Node
 //   MoniMusic-<versión>-extension.zip  la extensión para Chrome, Edge, Brave y Opera
+//   MoniMusic-windows.zip              la misma app con nombre fijo, para el botón de la página
 // El .exe sale de GitHub Actions (artefacto "MoniMusic-windows"); se le indica dónde está:
 // Uso: npm run release -- --exe=ruta\a\monimusic.exe
 const { execFileSync } = require('child_process');
@@ -74,6 +75,8 @@ fs.writeFileSync(
   ].join('\r\n'),
 );
 zipFolder(stage, path.join(dist, `${name}.zip`));
+// copia con nombre fijo: la página enlaza a releases/latest/download/MoniMusic-windows.zip
+fs.copyFileSync(path.join(dist, `${name}.zip`), path.join(dist, 'MoniMusic-windows.zip'));
 
 // ---------- la extensión ----------
 execFileSync(process.execPath, [path.join(__dirname, 'build-extension.js')], { stdio: 'inherit' });
