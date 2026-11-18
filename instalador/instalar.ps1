@@ -1,43 +1,51 @@
-# Instala MoniMusic: ventana propia sobre Microsoft Edge (o Brave) con la extensión cargada.
-# No necesita Node ni permisos de administrador. Todo queda en %LOCALAPPDATA%\MoniMusic.
+# Instala MoniMusic: copia la app a %LOCALAPPDATA%\MoniMusic\app y crea los accesos directos
+# en el escritorio y en el menú Inicio. No necesita permisos de administrador.
 $ErrorActionPreference = 'Stop'
 
 $origen = $PSScriptRoot
 $destino = Join-Path $env:LOCALAPPDATA 'MoniMusic'
-$extension = Join-Path $destino 'extension'
-$perfil = Join-Path $destino 'perfil'
-$icono = Join-Path $destino 'icon.ico'
+$carpetaApp = Join-Path $destino 'app'
+$exe = Join-Path $carpetaApp 'MoniMusic.exe'
+$nuevo = Join-Path $origen 'MoniMusic.exe'
 
-$candidatos = @(
-  (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\Edge\Application\msedge.exe'),
-  (Join-Path $env:ProgramFiles 'Microsoft\Edge\Application\msedge.exe'),
-  (Join-Path $env:ProgramFiles 'BraveSoftware\Brave-Browser\Application\brave.exe'),
-  (Join-Path $env:LOCALAPPDATA 'BraveSoftware\Brave-Browser\Application\brave.exe')
-)
-$navegador = $candidatos | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
-if (-not $navegador) {
-  Write-Host 'No encontré Microsoft Edge ni Brave. MoniMusic necesita uno de los dos como motor.' -ForegroundColor Yellow
+if (-not (Test-Path -LiteralPath $nuevo)) {
+  Write-Host 'Falta MoniMusic.exe junto a este instalador. Descomprime el ZIP completo y vuelve a intentar.' -ForegroundColor Yellow
+  exit 1
+}
+if (Get-Process -Name 'MoniMusic' -ErrorAction SilentlyContinue) {
+  Write-Host 'MoniMusic está abierta. Ciérrala y vuelve a ejecutar el instalador.' -ForegroundColor Yellow
   exit 1
 }
 
-if (-not (Test-Path -LiteralPath (Join-Path $origen 'extension\manifest.json'))) {
-  Write-Host 'Falta la carpeta "extension" junto a este instalador. Descomprime el ZIP completo y vuelve a intentar.' -ForegroundColor Yellow
-  exit 1
+# MoniMusic usa el motor WebView2 de Windows (viene con Windows 11 y con Edge en Windows 10).
+$webview2 = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+$hayMotor = @(
+  "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$webview2",
+  "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\$webview2",
+  "HKCU:\Software\Microsoft\EdgeUpdate\Clients\$webview2"
+) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (-not $hayMotor) {
+  Write-Host 'Aviso: no encontré el motor WebView2 de Microsoft. Si MoniMusic no abre, instálalo desde:' -ForegroundColor Yellow
+  Write-Host '  https://developer.microsoft.com/microsoft-edge/webview2/'
 }
 
-New-Item -ItemType Directory -Force -Path $destino, $perfil | Out-Null
-if (Test-Path -LiteralPath $extension) { Remove-Item -LiteralPath $extension -Recurse -Force }
-Copy-Item -LiteralPath (Join-Path $origen 'extension') -Destination $extension -Recurse
-Copy-Item -LiteralPath (Join-Path $origen 'icon.ico') -Destination $icono -Force
+New-Item -ItemType Directory -Force -Path $carpetaApp | Out-Null
+Copy-Item -LiteralPath $nuevo -Destination $exe -Force
+# una interfaz suelta de una versión anterior ya no hace falta: la app trae la suya
+$suelto = Join-Path $carpetaApp 'inject.js'
+if (Test-Path -LiteralPath $suelto) { Remove-Item -LiteralPath $suelto -Force }
+# restos de la versión anterior, que funcionaba como extensión sobre Edge
+foreach ($viejo in @((Join-Path $destino 'extension'), (Join-Path $destino 'icon.ico'))) {
+  if (Test-Path -LiteralPath $viejo) { Remove-Item -LiteralPath $viejo -Recurse -Force }
+}
 
-$argumentos = '--user-data-dir="{0}" --load-extension="{1}" --no-first-run --no-default-browser-check --app=https://music.youtube.com/' -f $perfil, $extension
 $shell = New-Object -ComObject WScript.Shell
 foreach ($carpeta in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) {
   $acceso = $shell.CreateShortcut((Join-Path $carpeta 'MoniMusic.lnk'))
-  $acceso.TargetPath = $navegador
-  $acceso.Arguments = $argumentos
-  $acceso.WorkingDirectory = $destino
-  $acceso.IconLocation = "$icono,0"
+  $acceso.TargetPath = $exe
+  $acceso.Arguments = ''
+  $acceso.WorkingDirectory = $carpetaApp
+  $acceso.IconLocation = "$exe,0"
   $acceso.Description = 'MoniMusic'
   $acceso.Save()
 }

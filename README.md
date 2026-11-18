@@ -13,75 +13,82 @@ Toma el color de la portada que suena, le suma letra que sigue la canción y un 
   <a href="https://moonryx.com">Moonryx</a>
 </p>
 
-![MoniMusic con el tema Aurora](docs/aurora.jpg)
+![Letra en vivo en MoniMusic](docs/letra.jpg)
 
 ## Qué hace
 
-- **El color sale de la portada.** El fondo, las barras y los detalles se tiñen con la portada de la canción actual.
-- **Letra en vivo.** Resalta la línea que suena; al tocar una línea, la canción salta a esa parte (`Alt + L`).
-- **Panel de diseño.** Temas, color de acento, fondo, redondez y tipografía, con cambios al instante (`Ctrl + ,`).
-- **Modo rápido.** Sin efectos pesados por defecto; el acabado de cristal es opcional.
+- **El color sale de la portada.** El fondo, las barras y hasta la barra de título de la ventana se tiñen con la canción actual.
+- **El fondo baila con la música.** Las manchas de color laten con cada golpe y se mueven más rápido mientras más movida es la canción.
+- **Letra en vivo.** La línea que suena se va llenando de luz; al tocar una línea, la canción salta a esa parte (`Ctrl + L`).
+- **Panel de diseño.** Temas, color de acento, fondo, movimiento, redondez y tipografía, con cambios al instante (`Ctrl + ,`).
 - **Tu cuenta de siempre.** Es YouTube Music de verdad: tu biblioteca, tus playlists y tu plan.
 
-| Neón | Atardecer |
+| Inicio | Ahora suena |
 | --- | --- |
-| ![Tema Neón](docs/neon.jpg) | ![Tema Atardecer](docs/atardecer.jpg) |
+| ![Inicio](docs/inicio.jpg) | ![Ahora suena](docs/reproductor.jpg) |
 
 ## Instalar en Windows
 
-1. Descarga el ZIP de la [última versión](https://github.com/moonryx/MoniMusic/releases/latest) y descomprímelo completo.
+1. Descarga `MoniMusic-<versión>-windows.zip` de la [última versión](https://github.com/moonryx/MoniMusic/releases/latest) y descomprímelo completo.
 2. Doble clic en **Instalar MoniMusic.cmd**.
 3. Abre **MoniMusic** desde el escritorio o el menú Inicio e inicia sesión con Google una vez.
 
-Necesita Windows 10 u 11 con Microsoft Edge (viene con Windows) o Brave. El instalador no pide permisos de
-administrador y no está firmado, así que Windows puede mostrar un aviso antes de abrirlo. Todo lo que hace
-está en [`instalador/instalar.ps1`](instalador/instalar.ps1): copia la extensión a `%LOCALAPPDATA%\MoniMusic`
-y crea los accesos directos.
+Funciona en Windows 10 y 11 con el motor WebView2 de Microsoft, que ya viene con Windows 11 y con Edge en
+Windows 10. El instalador no pide permisos de administrador: copia la app a `%LOCALAPPDATA%\MoniMusic` y crea
+los accesos directos. Todo lo que hace está en [`instalador/instalar.ps1`](instalador/instalar.ps1).
 
-MoniMusic se abre en una ventana propia que usa el motor de Edge con un perfil aparte. Por eso el inicio de
-sesión de Google funciona: es un navegador real, no uno incrustado.
+MoniMusic no está firmada, así que Windows puede mostrar un aviso la primera vez. Con el Control de
+aplicaciones inteligente activado, Windows puede no dejarla abrir.
 
 ## Usarla como extensión
 
 También funciona dentro de Chrome, Edge, Brave u Opera, con la sesión que ya tengas:
 
-1. Abre `chrome://extensions` (o `edge://extensions`, `opera://extensions`).
-2. Activa **Modo de desarrollador**.
-3. Pulsa **Cargar descomprimida** y elige la carpeta [`extension`](extension).
+1. Descarga `MoniMusic-<versión>-extension.zip` de la [última versión](https://github.com/moonryx/MoniMusic/releases/latest) y descomprímelo.
+2. Abre `chrome://extensions` (o `edge://extensions`, `opera://extensions`) y activa **Modo de desarrollador**.
+3. Pulsa **Cargar descomprimida** y elige la carpeta que descomprimiste.
 4. Abre [music.youtube.com](https://music.youtube.com).
+
+En la extensión la letra se abre con `Alt + L`.
 
 ## Privacidad
 
 MoniMusic no tiene cuentas propias ni analítica. Los ajustes de diseño se guardan en tu equipo.
 Para buscar la letra se envían el título, el artista y la duración de la canción a [LRCLIB](https://lrclib.net),
-un servicio público de letras con tiempos. Nada más sale de tu máquina.
+un servicio público de letras con tiempos. El sonido para mover el fondo se mide en tu equipo y no se envía a
+ningún lado.
 
 ## Desarrollo
 
-```bash
-npm install
-npm run extension   # genera ./extension a partir del código fuente
-npm run instalar    # instala la app en este equipo (con MoniMusic cerrada)
-npm run release     # arma dist/MoniMusic-<versión>-windows.zip
-```
+La interfaz es una sola: `preload.js`, `theme.css` y `panel.css`. De ahí salen la app y la extensión.
 
 | Archivo | Para qué sirve |
 | --- | --- |
-| `preload.js` | Lo que corre dentro de YouTube Music: fondo de portada, panel de diseño y letra en vivo. |
+| `preload.js` | Lo que corre dentro de YouTube Music: fondo, panel de diseño, letra en vivo y botones. |
 | `theme.css` | El tema. Todo sale de variables `--mk-*` que el panel cambia en vivo. |
-| `panel.css` | Botones de la barra, panel de diseño y vista de la letra. |
-| `main.js` | Ventana de pruebas con Electron y la búsqueda de letras (LRCLIB). |
-| `tools/build-extension.js` | Convierte lo anterior en la extensión (`extension/`). No edites esa carpeta a mano. |
-| `tools/install.js` | Instala la app en tu equipo. |
-| `tools/build-release.js` | Arma el ZIP de descarga con el instalador de `instalador/`. |
+| `panel.css` | Botones, panel de diseño y vista de la letra. |
+| `main.js` | La búsqueda de letras (LRCLIB) y una ventana de pruebas con Electron. |
+| `app/` | La app de escritorio en Rust (Tauri): abre YouTube Music y le inyecta la interfaz. |
+| `tools/build-app.js` | Genera `app/src/inject.js` a partir de la interfaz. |
+| `tools/build-extension.js` | Genera la extensión (`extension/`). No edites esa carpeta a mano. |
+| `tools/build-release.js` | Arma los ZIP de descarga. |
 
-Para probar un cambio sin tocar tu sesión, hay una ventana de pruebas con perfil temporal que guarda una captura:
+La app se compila en GitHub Actions ([`.github/workflows/app.yml`](.github/workflows/app.yml)) con cada cambio
+en la interfaz o en `app/`; el ejecutable queda como artefacto `MoniMusic-windows`. Para armar una versión:
 
 ```bash
-npx electron . --shot=captura.png --shot-ext=extension --shot-size=1300x820
+npm run release -- --exe=ruta/a/monimusic.exe   # dist/MoniMusic-<versión>-windows.zip y -extension.zip
 ```
 
-La versión con Electron ya no se usa para instalar: Google rechaza el inicio de sesión en navegadores incrustados.
+Si junto a `MoniMusic.exe` hay un `inject.js` más nuevo que el que trae dentro, la app usa ese: así se prueba
+un cambio de interfaz sin compilar de nuevo (`npm run app:inject` y copiar `app/src/inject.js`).
+
+Para probar sin tocar tu sesión hay una ventana de pruebas con perfil temporal que guarda una captura. Los guiones
+de [`tools/pruebas`](tools/pruebas) ponen a sonar una canción y revisan cada parte:
+
+```bash
+npx electron . --shot=captura.png --shot-eval=tools/pruebas/letra.js --shot-size=1500x900
+```
 
 ## Aviso
 

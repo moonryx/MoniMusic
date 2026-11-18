@@ -1,23 +1,40 @@
-// Arma la descarga para Windows: dist/MoniMusic-<versión>-windows.zip
-// Contiene la extensión, el icono y un instalador que no necesita Node.
-// Uso: npm run release
+// Arma las descargas de una versión en dist/:
+//   MoniMusic-<versión>-windows.zip    la app (MoniMusic.exe) con su instalador, que no necesita Node
+//   MoniMusic-<versión>-extension.zip  la extensión para Chrome, Edge, Brave y Opera
+// El .exe sale de GitHub Actions (artefacto "MoniMusic-windows"); se le indica dónde está:
+// Uso: npm run release -- --exe=ruta\a\monimusic.exe
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
 const { version } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const name = `MoniMusic-${version}-windows`;
 const dist = path.join(root, 'dist');
+
+const exeArg = process.argv.find((arg) => arg.startsWith('--exe='));
+const exe = exeArg ? path.resolve(exeArg.slice('--exe='.length)) : path.join(dist, 'MoniMusic.exe');
+if (!fs.existsSync(exe)) {
+  console.error(`No encuentro el ejecutable: ${exe}\nBájalo de GitHub Actions y pásalo con --exe=ruta`);
+  process.exit(1);
+}
+
+const zipFolder = (folder, zip) => {
+  fs.rmSync(zip, { force: true });
+  execFileSync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-Command', `Compress-Archive -Path '${folder}\\*' -DestinationPath '${zip}' -CompressionLevel Optimal`],
+    { stdio: 'inherit' },
+  );
+  console.log(`Listo: ${zip} (${Math.round(fs.statSync(zip).size / 1024)} KB)`);
+};
+
+// ---------- la app ----------
+const name = `MoniMusic-${version}-windows`;
 const stage = path.join(dist, name);
 const files = path.join(stage, 'archivos');
-
-execFileSync(process.execPath, [path.join(__dirname, 'build-extension.js')], { stdio: 'inherit' });
-
 fs.rmSync(stage, { recursive: true, force: true });
 fs.mkdirSync(files, { recursive: true });
-fs.cpSync(path.join(root, 'extension'), path.join(files, 'extension'), { recursive: true });
-fs.copyFileSync(path.join(root, 'assets', 'icon.ico'), path.join(files, 'icon.ico'));
+fs.copyFileSync(exe, path.join(files, 'MoniMusic.exe'));
 
 // Windows PowerShell 5 lee los .ps1 sin marca como ANSI: se guardan con BOM para que las tildes salgan bien.
 for (const script of ['instalar.ps1', 'desinstalar.ps1']) {
@@ -41,9 +58,12 @@ fs.writeFileSync(
     '2. Doble clic en "Instalar MoniMusic.cmd".',
     '3. Abre MoniMusic desde el escritorio o el menu Inicio e inicia sesion con Google una vez.',
     '',
-    'Necesita Windows 10 u 11 con Microsoft Edge (viene con Windows) o Brave.',
-    'Si Windows muestra un aviso al abrir el instalador, elige "Mas informacion" y "Ejecutar de todas formas":',
-    'el instalador no esta firmado. Puedes leer lo que hace en archivos\\instalar.ps1.',
+    'Funciona en Windows 10 y 11. Usa el motor WebView2 de Microsoft, que ya viene con Windows 11',
+    'y con Microsoft Edge en Windows 10.',
+    '',
+    'MoniMusic no esta firmada. Si Windows muestra un aviso, elige "Mas informacion" y',
+    '"Ejecutar de todas formas". Con el Control de aplicaciones inteligente activado,',
+    'Windows puede no dejarla abrir. Lo que hace el instalador esta en archivos\\instalar.ps1.',
     '',
     'QUITAR',
     'Cierra MoniMusic y haz doble clic en "Desinstalar MoniMusic.cmd".',
@@ -53,12 +73,8 @@ fs.writeFileSync(
     '',
   ].join('\r\n'),
 );
+zipFolder(stage, path.join(dist, `${name}.zip`));
 
-const zip = path.join(dist, `${name}.zip`);
-fs.rmSync(zip, { force: true });
-execFileSync(
-  'powershell.exe',
-  ['-NoProfile', '-NonInteractive', '-Command', `Compress-Archive -Path '${stage}\\*' -DestinationPath '${zip}' -CompressionLevel Optimal`],
-  { stdio: 'inherit' },
-);
-console.log(`Descarga lista: ${zip} (${Math.round(fs.statSync(zip).size / 1024)} KB)`);
+// ---------- la extensión ----------
+execFileSync(process.execPath, [path.join(__dirname, 'build-extension.js')], { stdio: 'inherit' });
+zipFolder(path.join(root, 'extension'), path.join(dist, `MoniMusic-${version}-extension.zip`));
