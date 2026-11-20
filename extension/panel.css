@@ -692,6 +692,26 @@ html[data-mk-lyrics] #mk-lyrics {
     linear-gradient(180deg, rgba(9, 8, 15, 0.1), rgba(9, 8, 15, 0.42));
 }
 
+/* Luz del color de la canción que late con cada golpe (preload.js pone --mk-pulse y --mk-energy).
+   Va por encima del velo oscuro; con el movimiento en "Suave" o "Quieto" se queda en un brillo fijo. */
+#mk-lyrics .mk-ly-glow {
+  position: absolute;
+  inset: -12%;
+  z-index: 1;
+  background:
+    radial-gradient(38% 46% at 24% 46%, color-mix(in srgb, var(--mk-accent, #c4a1ff) 62%, transparent), transparent 72%),
+    radial-gradient(34% 40% at 82% 22%, color-mix(in srgb, var(--mk-accent, #c4a1ff) 40%, transparent), transparent 70%),
+    radial-gradient(40% 36% at 70% 92%, color-mix(in srgb, var(--mk-accent, #c4a1ff) 34%, transparent), transparent 72%);
+  mix-blend-mode: screen;
+  opacity: calc(0.16 + var(--mk-energy, 0) * 0.22 + var(--mk-pulse, 0) * 0.5);
+  transform: scale(calc(1 + var(--mk-energy, 0) * 0.1 + var(--mk-pulse, 0) * 0.06));
+  will-change: opacity, transform;
+}
+
+#mk-lyrics .mk-ly-art {
+  scale: calc(1 + var(--mk-pulse, 0) * 0.028);
+}
+
 @keyframes mk-ly-drift {
   from {
     transform: scale(4.2) rotate(0deg);
