@@ -264,19 +264,69 @@ function music() {
     return { now: Number.isFinite(now) ? now : 0, total };
   }
 
-  // El <video> que está sonando. YouTube Music a veces tiene más de uno (deja lista la siguiente canción en otro):
-  // manda el que coincide con la barra del reproductor.
+  // El <video> que está sonando. YouTube Music a veces tiene más de uno (deja lista la siguiente canción en otro,
+  // o el de la vuelta anterior de la misma canción, ya terminado): manda el que suena; después, el que coincide
+  // con la barra del reproductor.
   function video() {
     const all = Array.from(document.querySelectorAll('video'));
     if (all.length <= 1) return all[0] || null;
     const bar = barTimes();
-    if (bar) {
-      const sameLength = all.filter((media) => Math.abs(media.duration - bar.total) < 2);
-      const sameMoment = sameLength.filter((media) => Math.abs(media.currentTime - bar.now) < 4);
-      if (sameMoment.length) return sameMoment[0];
-      if (sameLength.length) return sameLength[0];
+    const score = (media) => {
+      let points = 0;
+      if (!media.paused && !media.ended) points -= 1000;
+      if (media.ended) points += 500;
+      if (bar) {
+        if (Math.abs(media.duration - bar.total) < 3) points -= 100;
+        points += Math.min(99, Math.abs(media.currentTime - bar.now));
+      }
+      return points;
+    };
+    return all.reduce((best, media) => (score(media) < score(best) ? media : best));
+  }
+
+  // Dónde va la canción, en segundos con decimales. Sale del <video> que suena (si hay varios, del que coincide
+  // con lo que marca la barra del reproductor); si ninguno cuadra, de la barra, que sube de segundo en segundo.
+  const clock = { now: -1, at: 0 };
+  function playhead() {
+    const times = barTimes();
+    if (times && times.now !== clock.now) {
+      clock.now = times.now;
+      clock.at = performance.now();
     }
-    return all.find((media) => !media.paused && !media.ended) || all[0];
+    const media = video();
+    const single = document.querySelectorAll('video').length === 1;
+    const fits = media && (single || !times || Math.abs(media.currentTime - times.now) < 2.5);
+    if (fits && Number.isFinite(media.currentTime)) {
+      const total = times ? times.total : media.duration;
+      return { t: media.currentTime, total, playing: !media.paused && !media.ended, media };
+    }
+    if (!times) return null;
+    const since = (performance.now() - clock.at) / 1000;
+    const playing = since < 1.6;
+    return { t: times.now + (playing ? Math.min(0.95, since) : 0), total: times.total, playing, media: null };
+  }
+
+  // ---------- barra de progreso fluida ----------
+  // YouTube Music mueve la bolita una vez por segundo, a saltos. Aquí se mueve cuadro por cuadro con el tiempo
+  // real de la canción. Al arrastrarla o si algo no cuadra, vuelve a mandar la de YouTube Music.
+  let smoothRaf = 0;
+  function smoothFrame() {
+    smoothRaf = 0;
+    const bar = document.querySelector('ytmusic-player-bar #progress-bar');
+    if (!bar || document.hidden) return;
+    const head = playhead();
+    const dragging = Boolean(bar.querySelector('.dragging')) || bar.matches(':active');
+    if (head && head.media && head.total > 0 && !dragging && !adPlaying()) {
+      const ratio = Math.min(1, Math.max(0, head.t / head.total));
+      bar.style.setProperty('--mk-progress', ratio.toFixed(5));
+      if (!bar.hasAttribute('data-mk-smooth')) bar.setAttribute('data-mk-smooth', '');
+    } else if (bar.hasAttribute('data-mk-smooth')) {
+      bar.removeAttribute('data-mk-smooth');
+    }
+    if (head && head.playing) smoothRaf = requestAnimationFrame(smoothFrame);
+  }
+  function smoothBar() {
+    if (!smoothRaf) smoothRaf = requestAnimationFrame(smoothFrame);
   }
   const adPlaying = () => Boolean(document.querySelector('.ad-showing'));
 
@@ -823,7 +873,7 @@ function music() {
   }
 
   // ---------- letra sincronizada ----------
-  const ly = { key: '', lines: [], status: 'idle', active: -1, nodes: [], hold: 0 };
+  const ly = { key: '', lines: [], status: 'idle', active: -1, nodes: [], hold: 0, centeredAt: 0 };
   let lyricsBox = null;
   let lyScroll = null;
   let lyCover = null;
@@ -919,6 +969,7 @@ function music() {
         node.addEventListener('click', () => {
           const media = video();
           if (media) media.currentTime = line.t;
+          ly.hold = 0; // tocar una línea no cuenta como moverla a mano: la letra la sigue al instante
         });
       }
       return node;
@@ -1030,42 +1081,52 @@ function music() {
     // La portada a veces llega un instante después que el título.
     if (currentArt && ly.status !== 'empty') setArt(currentArt);
 
-    const media = video();
+    const head = playhead();
     if (ly.status === 'plain') {
       // Sin tiempos no se puede marcar línea por línea: el texto baja al ritmo de la canción.
       // Si la persona mueve la letra a mano, se le deja en paz unos segundos.
-      if (media && media.duration > 0 && !adPlaying() && Date.now() > ly.hold) {
+      if (head && head.total > 0 && !adPlaying() && Date.now() > ly.hold) {
         const room = lyScroll.scrollHeight - lyScroll.clientHeight;
-        const target = Math.round(room * Math.min(1, media.currentTime / media.duration));
+        const target = Math.round(room * Math.min(1, head.t / head.total));
         if (Math.abs(target - lyScroll.scrollTop) > 6) lyScroll.scrollTo({ top: target, behavior: 'smooth' });
       }
       return;
     }
     if (ly.status !== 'synced') return;
-    if (!media || adPlaying()) return;
-    const now = media.currentTime + 0.25;
+    if (!head || adPlaying()) return;
+    const now = head.t + 0.25;
     let index = -1;
     for (let i = 0; i < ly.lines.length; i += 1) {
       if (ly.lines[i].t <= now) index = i;
       else break;
     }
-    if (index === ly.active) return;
+    const current = ly.nodes[index];
+    // Dónde debería estar la letra: la línea que suena al centro; antes de la primera, arriba del todo.
+    const spot = current ? Math.max(0, current.offsetTop - lyScroll.clientHeight / 2 + current.clientHeight / 2) : 0;
+    const follow = () => {
+      ly.centeredAt = Date.now();
+      lyScroll.scrollTo({ top: spot, behavior: 'smooth' });
+    };
+    if (index === ly.active) {
+      // Si la letra quedó lejos (la canción volvió a empezar, saltó, o la persona la movió y ya la soltó),
+      // vuelve sola a la línea que suena.
+      const room = Math.max(0, lyScroll.scrollHeight - lyScroll.clientHeight);
+      const off = Math.abs(Math.min(spot, room) - lyScroll.scrollTop);
+      if (off > lyScroll.clientHeight * 0.3 && Date.now() > ly.hold && Date.now() - (ly.centeredAt || 0) > 1500) follow();
+      return;
+    }
     ly.active = index;
     ly.nodes.forEach((node, i) => {
       node.classList.toggle('mk-active', i === index);
       node.classList.toggle('mk-past', i < index);
     });
-    const current = ly.nodes[index];
     if (current) {
       // La línea se va "llenando" de luz durante lo que dura (hasta que empieza la siguiente).
       const next = ly.lines[index + 1];
       const span = next ? next.t - ly.lines[index].t : 5;
       current.style.setProperty('--mk-dur', `${Math.min(12, Math.max(0.5, span)).toFixed(2)}s`);
-      lyScroll.scrollTo({
-        top: current.offsetTop - lyScroll.clientHeight / 2 + current.clientHeight / 2,
-        behavior: 'smooth',
-      });
     }
+    if (Date.now() > ly.hold) follow();
   }
 
   function buildLyrics() {
@@ -1159,7 +1220,9 @@ function music() {
 
     setInterval(() => {
       step('navegación', onNavigate);
-      if (!document.hidden) step('letra', tickLyrics);
+      if (document.hidden) return;
+      step('letra', tickLyrics);
+      step('barra fluida', smoothBar);
     }, 200);
 
     // el audio del medidor arranca con el primer clic o tecla (regla de los navegadores)

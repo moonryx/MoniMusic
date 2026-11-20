@@ -552,6 +552,17 @@ ytmusic-player-bar #progress-bar #sliderBar {
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--mk-accent) 75%, transparent));
 }
 
+/* Avance fluido: mientras suena, la línea y la bolita siguen el tiempo real cuadro por cuadro (preload.js). */
+ytmusic-player-bar #progress-bar[data-mk-smooth] #primaryProgress {
+  transform: scaleX(var(--mk-progress, 0)) !important;
+  transition: none !important;
+}
+
+ytmusic-player-bar #progress-bar[data-mk-smooth] #sliderKnob {
+  left: calc(var(--mk-progress, 0) * 100%) !important;
+  transition: none !important;
+}
+
 ytmusic-player-bar #progress-bar,
 ytmusic-player-bar #volume-slider,
 ytmusic-player-bar #expand-volume-slider {
