@@ -354,12 +354,16 @@ function music() {
   const smooth = { raf: 0, shown: -1, then: 0 };
   function smoothFrame(now) {
     smooth.raf = 0;
+    if (document.hidden) return;
     const bar = playerProgress();
-    if (!bar || document.hidden) return;
+    const plainOpen = ly.status === 'plain' && lyricsOpen();
+    if (!bar && !plainOpen) return;
     const head = playhead();
-    const dragging = Boolean(bar.querySelector('.dragging')) || bar.matches(':active');
+    const ad = adPlaying();
+    const catchingUp = plainOpen && head && !ad && followPlainLyrics(head, now);
+    const dragging = bar && (bar.querySelector('.dragging') || bar.matches(':active'));
     let moving = false;
-    if (head && head.media && head.total > 0 && !dragging && !adPlaying()) {
+    if (bar && head && head.media && head.total > 0 && !dragging && !ad) {
       const target = Math.min(1, Math.max(0, head.t / head.total));
       const dt = Math.min(100, smooth.then ? now - smooth.then : 16);
       const gap = target - smooth.shown;
@@ -371,10 +375,10 @@ function music() {
       if (!bar.hasAttribute('data-mk-smooth')) bar.setAttribute('data-mk-smooth', '');
     } else {
       smooth.shown = -1;
-      if (bar.hasAttribute('data-mk-smooth')) bar.removeAttribute('data-mk-smooth');
+      if (bar?.hasAttribute('data-mk-smooth')) bar.removeAttribute('data-mk-smooth');
     }
     smooth.then = now;
-    if ((head && head.playing) || moving) smooth.raf = requestAnimationFrame(smoothFrame);
+    if ((head && head.playing) || moving || catchingUp) smooth.raf = requestAnimationFrame(smoothFrame);
     else smooth.then = 0;
   }
   function smoothBar() {
@@ -1055,7 +1059,7 @@ function music() {
         if (job.signal.aborted) return;
         line.es = translated;
         ly.nodes[index].appendChild(el('span', { class: 'mk-translation', lang: 'es', text: translated }));
-        if (index <= ly.active) ly.recenter = true;
+        if (ly.status === 'plain' || index <= ly.active) ly.recenter = true;
       }
       translationNote.textContent = '';
     } catch {
@@ -1158,10 +1162,13 @@ function music() {
   }
 
   function renderLines(synced) {
+    plainFollow.index = -1;
+    plainFollow.resumeOffset = 0;
     ly.active = -1;
     ly.nodes = ly.lines.map((line) => {
       const node = el('p', { class: `mk-line${synced ? '' : ' mk-plain'}` },
         el('span', { class: 'mk-original', text: line.text || (synced ? '♪' : ' ') }));
+      if (!synced && line.text.trim()) node.dataset.original = line.text;
       if (synced) {
         node.addEventListener('click', () => {
           seekTo(line.t);
@@ -1276,20 +1283,48 @@ function music() {
     lyricsBox.style.bottom = `${Math.round(bottom)}px`;
   }
 
+  const plainFollow = { index: -1, start: 0, end: 0, resumeOffset: 0, resumedAt: 0 };
+
+  // Sin marcas de tiempo estimamos el recorrido entre líneas. Al crecer una traducción
+  // solo cambia la distancia en píxeles; la canción sigue en el mismo tramo de texto.
+  function followPlainLyrics(head, now) {
+    if (!Number.isFinite(head.total) || head.total <= 0 || !ly.nodes.length || Date.now() < ly.hold) return false;
+    const progress = Math.min(1, Math.max(0, head.t / head.total));
+    const last = ly.nodes.length - 1;
+    const segment = progress * Math.max(1, last);
+    const index = Math.min(Math.floor(segment), Math.max(0, last - 1));
+    if (index !== plainFollow.index || ly.recenter) {
+      // Normaliza las posiciones de los versos al espacio que realmente se puede recorrer.
+      const range = Math.max(0, lyScroll.scrollHeight - lyScroll.clientHeight);
+      const top = ly.nodes[0].offsetTop;
+      const span = ly.nodes[last].offsetTop - top;
+      plainFollow.start = span ? range * (ly.nodes[index].offsetTop - top) / span : 0;
+      plainFollow.end = span ? range * (ly.nodes[index + 1].offsetTop - top) / span : range;
+      plainFollow.index = index;
+      ly.recenter = false;
+    }
+    const target = plainFollow.start + (segment - index) * (plainFollow.end - plainFollow.start);
+    if (ly.hold) {
+      // Al soltar la letra se recupera la posición poco a poco, partiendo de donde quedó.
+      plainFollow.resumeOffset = calmMotion.matches ? 0 : lyScroll.scrollTop - target;
+      plainFollow.resumedAt = now;
+      ly.hold = 0;
+    }
+    const remaining = plainFollow.resumeOffset * Math.exp(-(now - plainFollow.resumedAt) / 150);
+    const catchingUp = Math.abs(remaining) > 0.5;
+    if (!catchingUp) plainFollow.resumeOffset = 0;
+    lyScroll.scrollTo({ top: target + (catchingUp ? remaining : 0), behavior: 'instant' });
+    return catchingUp;
+  }
+
   function tickLyrics() {
     if (!lyricsBox || !lyricsOpen() || document.hidden) return;
     if (ly.status !== 'synced' && ly.status !== 'plain') return;
-    const head = playhead();
     if (ly.status === 'plain') {
-      // Sin tiempos no se puede marcar línea por línea: el texto baja al ritmo de la canción.
-      // Si la persona mueve la letra a mano, se le deja en paz unos segundos.
-      if (head && head.total > 0 && !adPlaying() && Date.now() > ly.hold) {
-        const room = lyScroll.scrollHeight - lyScroll.clientHeight;
-        const target = Math.round(room * Math.min(1, head.t / head.total));
-        if (Math.abs(target - lyScroll.scrollTop) > 6) lyScroll.scrollTo({ top: target, behavior: 'smooth' });
-      }
+      if ((ly.recenter || ly.hold) && Date.now() >= ly.hold) smoothBar();
       return;
     }
+    const head = playhead();
     if (!head || adPlaying()) return;
     const now = head.t;
     let lo = 0;
