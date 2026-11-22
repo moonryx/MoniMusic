@@ -295,8 +295,13 @@ function music() {
     .catch(() => {});
 
   // Lo que marca la barra del reproductor (segundos transcurridos y duración): es lo que ve la persona.
+  let progressBar = null;
+  function playerProgress() {
+    if (!progressBar?.isConnected) progressBar = document.querySelector('ytmusic-player-bar #progress-bar, #progress-bar');
+    return progressBar;
+  }
   function barTimes() {
-    const bar = document.querySelector('#progress-bar');
+    const bar = playerProgress();
     if (!bar) return null;
     const total = Number(bar.getAttribute('aria-valuemax'));
     const now = Number(bar.getAttribute('aria-valuenow'));
@@ -306,11 +311,14 @@ function music() {
 
   // El <video> que está sonando. YouTube Music a veces tiene más de uno (deja lista la siguiente canción en otro,
   // o el de la vuelta anterior de la misma canción, ya terminado): manda el que suena.
+  let playingMedia = null;
   function video() {
+    if (playingMedia?.isConnected && !playingMedia.paused && !playingMedia.ended) return playingMedia;
     const all = Array.from(document.querySelectorAll('video'));
-    if (all.length <= 1) return all[0] || null;
+    if (all.length <= 1) return (playingMedia = all[0] || null);
     const score = (media) => (!media.paused && !media.ended ? 0 : media.ended ? 2 : 1);
-    return all.reduce((best, media) => (score(media) < score(best) ? media : best));
+    playingMedia = all.reduce((best, media) => (score(media) < score(best) ? media : best));
+    return playingMedia;
   }
 
   // Dónde va la canción, en segundos con decimales.
@@ -386,7 +394,7 @@ function music() {
   const smooth = { raf: 0, shown: -1, then: 0 };
   function smoothFrame(now) {
     smooth.raf = 0;
-    const bar = document.querySelector('ytmusic-player-bar #progress-bar');
+    const bar = playerProgress();
     if (!bar || document.hidden) return;
     const head = playhead();
     const dragging = Boolean(bar.querySelector('.dragging')) || bar.matches(':active');
@@ -564,10 +572,19 @@ function music() {
       restBeat();
       return;
     }
+    // El fondo cambia despacio. Evita recalcular audio y estilos a 60, 120 o 144 Hz.
+    if (beat.then && now - beat.then < 32) {
+      beat.raf = requestAnimationFrame(beatFrame);
+      return;
+    }
     const dt = Math.min(100, beat.then ? now - beat.then : 16);
     beat.then = now;
     const media = video();
     const playing = Boolean(media && !media.paused && !media.ended && !adPlaying());
+    if (!playing) {
+      restBeat();
+      return;
+    }
     const hearing = playing && beat.source && beat.ctx && beat.ctx.state === 'running';
 
     if (hearing) {
@@ -649,7 +666,7 @@ function music() {
     if (media && !media.paused) {
       listenTo(media);
       wakeBeat();
-    }
+    } else return;
     if (!beat.raf) beat.raf = requestAnimationFrame(beatFrame);
   }
 
@@ -833,6 +850,16 @@ function music() {
     return group;
   }
 
+  let fullButton;
+  async function toggleFullscreen() {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await root.requestFullscreen();
+    } catch {
+      fullButton.title = 'La ventana no permitió activar la pantalla completa';
+    }
+  }
+
   function buildPanel() {
     if (document.getElementById('mk-panel')) return;
 
@@ -859,7 +886,18 @@ function music() {
       icon(['M9 18V5l11-2v13', 'M9 18a3 3 0 1 1-6 0a3 3 0 0 1 6 0z', 'M20 16a3 3 0 1 1-6 0a3 3 0 0 1 6 0z']),
       el('span', { text: 'Letra en vivo' }),
     );
-    tools = el('div', { id: 'mk-tools' }, lyricsButton, fab);
+    fullButton = el('button', {
+      id: 'mk-fullscreen', type: 'button', onclick: toggleFullscreen,
+    }, icon(['M8 3H3v5', 'M16 3h5v5', 'M21 16v5h-5', 'M3 16v5h5']));
+    const reflectFullscreen = () => {
+      const active = Boolean(document.fullscreenElement);
+      fullButton.setAttribute('aria-pressed', String(active));
+      fullButton.title = active ? 'Salir de pantalla completa (F11)' : 'Pantalla completa (F11)';
+      fullButton.setAttribute('aria-label', fullButton.title);
+    };
+    reflectFullscreen();
+    document.addEventListener('fullscreenchange', reflectFullscreen);
+    tools = el('div', { id: 'mk-tools' }, lyricsButton, fullButton, fab);
 
     const scrim = el('div', { id: 'mk-scrim', onclick: () => togglePanel(false) });
 
@@ -1008,7 +1046,7 @@ function music() {
   }
 
   // ---------- letra sincronizada ----------
-  const ly = { key: '', lines: [], status: 'idle', active: -1, nodes: [], hold: 0, centeredAt: 0 };
+  const ly = { key: '', lines: [], status: 'idle', active: -1, nodes: [], hold: 0, centeredAt: 0, recenter: false };
   let lyricsBox = null;
   let lyScroll = null;
   let lyCover = null;
@@ -1018,14 +1056,88 @@ function music() {
   let lyNote = null;
   let lyGlow = null;
   let lyArt = null;
+  let translateButton, translationNote;
+  let translationJob = null;
+  let useOnline = !globalThis.Translator;
+
+  function stopTranslation() {
+    ly.recenter = true;
+    translationJob?.abort();
+    translationJob = null;
+    lyricsBox.removeAttribute('data-translated');
+    translateButton.setAttribute('aria-pressed', 'false');
+    translateButton.textContent = useOnline ? 'Traducir con MyMemory' : 'Traducir al español';
+    translateButton.title = useOnline ? 'Enviar los versos en inglés a MyMemory para traducirlos al español' : 'Traducir del inglés al español en este equipo';
+    translationNote.textContent = '';
+  }
+
+  async function toggleTranslation() {
+    if (lyricsBox.hasAttribute('data-translated')) return stopTranslation();
+    if (!ly.nodes.length) return;
+    const job = new AbortController();
+    translationJob = job;
+    lyricsBox.setAttribute('data-translated', '');
+    ly.recenter = true;
+    translateButton.setAttribute('aria-pressed', 'true');
+    translateButton.textContent = 'Ocultar español';
+    translationNote.textContent = useOnline ? 'Traduciendo…' : 'Preparando el traductor local…';
+    let engine;
+    try {
+      if (!useOnline) engine = await Translator.create({ sourceLanguage: 'en', targetLanguage: 'es', signal: job.signal });
+      const first = Math.max(0, ly.active);
+      const known = new Map();
+      for (let i = 0; i < ly.lines.length; i++) {
+        const index = (first + i) % ly.lines.length;
+        const line = ly.lines[index];
+        if (job.signal.aborted) return;
+        if (!line.text.trim() || line.es) continue;
+        let translated = known.get(line.text);
+        if (!translated) {
+          if (engine) translated = await engine.translate(line.text, { signal: job.signal });
+          else {
+            const query = new URLSearchParams({ q: line.text, langpair: 'en|es' });
+            const response = await fetch('https://api.mymemory.translated.net/get?' + query, {
+              credentials: 'omit', referrerPolicy: 'no-referrer',
+              signal: AbortSignal.any([job.signal, AbortSignal.timeout(10000)]),
+            });
+            if (!response.ok) throw new Error('red');
+            const data = await response.json();
+            if (Number(data.responseStatus) !== 200 || !data.responseData?.translatedText) throw new Error('servicio');
+            translated = data.responseData.translatedText;
+          }
+          known.set(line.text, translated);
+        }
+        if (job.signal.aborted) return;
+        line.es = translated;
+        ly.nodes[index].appendChild(el('span', { class: 'mk-translation', lang: 'es', text: translated }));
+        if (index <= ly.active) ly.recenter = true;
+      }
+      translationNote.textContent = '';
+    } catch {
+      if (job.signal.aborted) return;
+      const wasLocal = !useOnline;
+      useOnline = true;
+      stopTranslation();
+      translationNote.textContent = wasLocal ? 'Traducción local no disponible. Puedes usar MyMemory.' : 'No se pudo completar la traducción. Inténtalo más tarde.';
+    } finally {
+      engine?.destroy();
+      if (translationJob === job) translationJob = null;
+    }
+  }
 
   const lyricsOpen = () => root.hasAttribute('data-mk-lyrics');
 
   function toggleLyrics(open) {
     root.toggleAttribute('data-mk-lyrics', open);
     if (open) {
-      ly.key = '';
+      layoutLyrics();
+      if (ly.status === 'none') ly.key = '';
+      ly.hold = 0;
+      ly.centeredAt = 0;
       updateLyrics();
+      tickLyrics();
+    } else {
+      stopTranslation();
     }
   }
 
@@ -1051,17 +1163,19 @@ function music() {
 
   function parseLrc(text) {
     const lines = [];
+    const offset = Number(text.match(/\[offset:\s*([+-]?\d+)\s*\]/i)?.[1] || 0) / 1000;
     text.split(/\r?\n/).forEach((raw) => {
       const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)];
       if (!stamps.length) return;
       const words = raw.replace(/\[[^\]]*\]/g, '').trim();
-      stamps.forEach((stamp) => lines.push({ t: Number(stamp[1]) * 60 + Number(stamp[2]), text: words }));
+      stamps.forEach((stamp) => lines.push({ t: Math.max(0, Number(stamp[1]) * 60 + Number(stamp[2]) - offset), text: words }));
     });
     return lines.sort((a, b) => a.t - b.t);
   }
 
   function setState(state) {
     ly.status = state;
+    if (state !== 'synced' && state !== 'plain') stopTranslation();
     if (lyricsBox) lyricsBox.setAttribute('data-state', state);
   }
 
@@ -1101,7 +1215,8 @@ function music() {
   function renderLines(synced) {
     ly.active = -1;
     ly.nodes = ly.lines.map((line) => {
-      const node = el('p', { class: `mk-line${synced ? '' : ' mk-plain'}`, text: line.text || (synced ? '♪' : ' ') });
+      const node = el('p', { class: `mk-line${synced ? '' : ' mk-plain'}` },
+        el('span', { class: 'mk-original', text: line.text || (synced ? '♪' : ' ') }));
       if (synced) {
         node.addEventListener('click', () => {
           seekTo(line.t);
@@ -1131,7 +1246,7 @@ function music() {
     }
     if (adPlaying() || !info.duration) {
       // Se espera a que empiece la canción de verdad; si aún no hay nada en pantalla, se avisa.
-      if (ly.status === 'idle' || ly.status === 'empty') {
+      if (ly.status !== 'waiting') {
         setState('waiting');
         ly.key = '';
         if (adPlaying()) showMessage('Un momento…', 'La letra aparece en cuanto termine el anuncio.');
@@ -1146,6 +1261,7 @@ function music() {
     const key = `${info.title}|${info.artist}|${Math.round(info.duration)}`;
     if (key === ly.key) return;
     ly.key = key;
+    ly.hold = 0;
     setState('loading');
     ly.lines = [];
     lyTitle.textContent = info.title;
@@ -1180,7 +1296,7 @@ function music() {
     }
   }
 
-  function tickLyrics() {
+  function layoutLyrics() {
     if (!lyricsBox || !lyricsOpen()) return;
 
     // El recuadro ocupa el espacio entre la barra superior y el reproductor.
@@ -1213,10 +1329,11 @@ function music() {
     lyricsBox.style.left = `${Math.round(left)}px`;
     lyricsBox.style.top = `${Math.round(top)}px`;
     lyricsBox.style.bottom = `${Math.round(bottom)}px`;
+  }
 
-    // La portada a veces llega un instante después que el título.
-    if (currentArt && ly.status !== 'empty') setArt(currentArt);
-
+  function tickLyrics() {
+    if (!lyricsBox || !lyricsOpen() || document.hidden) return;
+    if (ly.status !== 'synced' && ly.status !== 'plain') return;
     const head = playhead();
     if (ly.status === 'plain') {
       // Sin tiempos no se puede marcar línea por línea: el texto baja al ritmo de la canción.
@@ -1228,40 +1345,46 @@ function music() {
       }
       return;
     }
-    if (ly.status !== 'synced') return;
     if (!head || adPlaying()) return;
-    const now = head.t + 0.25;
-    let index = -1;
-    for (let i = 0; i < ly.lines.length; i += 1) {
-      if (ly.lines[i].t <= now) index = i;
-      else break;
+    const now = head.t;
+    let lo = 0;
+    let hi = ly.lines.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (ly.lines[mid].t <= now) lo = mid + 1;
+      else hi = mid;
     }
+    const index = lo - 1;
     const current = ly.nodes[index];
+    if (current) {
+      const end = ly.lines[index + 1]?.t ?? head.total;
+      const fraction = Math.min(1, (now - ly.lines[index].t) / Math.max(0.01, end - ly.lines[index].t));
+      current.style.setProperty('--mk-fill', `${((1 - fraction) * 100).toFixed(1)}%`);
+    }
+    if (index === ly.active && (Date.now() < ly.hold || (!ly.recenter && Date.now() - ly.centeredAt < 1500))) return;
+    ly.recenter = false;
     // Dónde debería estar la letra: la línea que suena al centro; antes de la primera, arriba del todo.
     const spot = current ? Math.max(0, current.offsetTop - lyScroll.clientHeight / 2 + current.clientHeight / 2) : 0;
     const follow = () => {
       ly.centeredAt = Date.now();
-      lyScroll.scrollTo({ top: spot, behavior: 'smooth' });
+      lyScroll.scrollTo({ top: spot, behavior: calmMotion.matches ? 'instant' : 'smooth' });
     };
     if (index === ly.active) {
       // Si la letra quedó lejos (la canción volvió a empezar, saltó, o la persona la movió y ya la soltó),
       // vuelve sola a la línea que suena.
       const room = Math.max(0, lyScroll.scrollHeight - lyScroll.clientHeight);
       const off = Math.abs(Math.min(spot, room) - lyScroll.scrollTop);
-      if (off > lyScroll.clientHeight * 0.3 && Date.now() > ly.hold && Date.now() - (ly.centeredAt || 0) > 1500) follow();
+      ly.centeredAt = Date.now();
+      if (off > 12) follow();
       return;
     }
-    ly.active = index;
-    ly.nodes.forEach((node, i) => {
-      node.classList.toggle('mk-active', i === index);
-      node.classList.toggle('mk-past', i < index);
-    });
-    if (current) {
-      // La línea se va "llenando" de luz durante lo que dura (hasta que empieza la siguiente).
-      const next = ly.lines[index + 1];
-      const span = next ? next.t - ly.lines[index].t : 5;
-      current.style.setProperty('--mk-dur', `${Math.min(12, Math.max(0.5, span)).toFixed(2)}s`);
+    const previous = ly.active;
+    ly.nodes[previous]?.classList.remove('mk-active');
+    for (let i = Math.max(0, Math.min(previous, index)); i <= Math.max(previous, index); i++) {
+      ly.nodes[i].classList.toggle('mk-past', i < index);
     }
+    current?.classList.add('mk-active');
+    ly.active = index;
     if (Date.now() > ly.hold) follow();
   }
 
@@ -1273,6 +1396,7 @@ function music() {
     lyArtist = el('div', { class: 'mk-ly-artist' });
     lyNote = el('div', { class: 'mk-ly-note' });
     lyScroll = el('div', { class: 'mk-ly-scroll' });
+    new ResizeObserver(() => { ly.recenter = true; }).observe(lyScroll);
     // luz que late con la música detrás de la letra, y la portada que acompaña el golpe
     lyGlow = el('div', { class: 'mk-ly-glow' });
     lyArt = el('div', { class: 'mk-ly-art' }, el('div', { class: 'mk-ly-disc', 'aria-hidden': 'true' }), lyCover);
@@ -1285,6 +1409,8 @@ function music() {
       'aria-label': 'Cerrar la letra',
       onclick: () => toggleLyrics(false),
     });
+    translateButton = el('button', { class: 'mk-translate', type: 'button', onclick: toggleTranslation });
+    translationNote = el('span', { class: 'mk-translation-note', role: 'status' });
     close.appendChild(icon(['M6 6l12 12', 'M18 6L6 18']));
     lyricsBox = el(
       'section',
@@ -1306,9 +1432,18 @@ function music() {
         ),
       ),
       lyScroll,
-      close,
+      el('div', { class: 'mk-ly-actions' }, translationNote, translateButton, close),
     );
+    stopTranslation();
     document.body.appendChild(lyricsBox);
+    if (!useOnline) {
+      Translator.availability({ sourceLanguage: 'en', targetLanguage: 'es' }).then((status) => {
+        if (status === 'unavailable' && !translationJob) {
+          useOnline = true;
+          stopTranslation();
+        }
+      }).catch(() => {});
+    }
   }
 
   // ---------- arranque ----------
@@ -1340,6 +1475,10 @@ function music() {
       step('ritmo del fondo', updateBeat);
       step('acceso a la letra', placeLyricsCta);
       step('letra', updateLyrics);
+      step('espacio de la letra', layoutLyrics);
+      if (lyricsOpen() && currentArt && ly.status !== 'empty') setArt(currentArt);
+      step('barra fluida', smoothBar);
+      step('navegación', onNavigate);
       step('logo', () => {
         const media = video();
         setLogoAnimated(Boolean(media && !media.paused && !media.ended));
@@ -1354,15 +1493,22 @@ function music() {
       lastPath = path;
       if (path !== '/watch' && lyricsOpen()) toggleLyrics(false);
     };
+    window.addEventListener('resize', layoutLyrics);
+    for (const event of ['seeked', 'playing', 'loadedmetadata']) {
+      document.addEventListener(event, () => {
+        if (document.hidden) return;
+        smoothBar();
+        if (event === 'playing') updateBeat();
+        updateLyrics();
+        tickLyrics();
+      }, true);
+    }
     window.addEventListener('popstate', onNavigate);
     window.addEventListener('yt-navigate-finish', onNavigate);
 
     setInterval(() => {
-      step('navegación', onNavigate);
-      if (document.hidden) return;
-      step('letra', tickLyrics);
-      step('barra fluida', smoothBar);
-    }, 200);
+      if (lyricsOpen() && !document.hidden) step('letra', tickLyrics);
+    }, 100);
 
     // el audio del medidor arranca con el primer clic o tecla (regla de los navegadores)
     window.addEventListener('pointerdown', wakeBeat, true);
@@ -1370,13 +1516,16 @@ function music() {
 
     window.addEventListener('keydown', (event) => {
       const key = event.key.toLowerCase();
-      if (event.ctrlKey && key === ',') {
+      if (key === 'f11' && !event.ctrlKey && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        if (!event.repeat) toggleFullscreen();
+      } else if (event.ctrlKey && key === ',') {
         event.preventDefault();
         togglePanel(!panelOpen());
       } else if (event.ctrlKey && !event.shiftKey && !event.altKey && key === 'l') {
         event.preventDefault();
         toggleLyrics(!lyricsOpen());
-      } else if (key === 'escape') {
+      } else if (key === 'escape' && !document.fullscreenElement) {
         if (panelOpen()) togglePanel(false);
         else if (lyricsOpen()) toggleLyrics(false);
       }

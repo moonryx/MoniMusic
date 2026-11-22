@@ -53,6 +53,7 @@ ytmusic-nav-bar .right-content {
   z-index: 2147483000;
 }
 
+#mk-fullscreen,
 #mk-fab,
 #mk-lyrics-btn {
   width: 40px;
@@ -72,6 +73,7 @@ ytmusic-nav-bar .right-content {
     color 0.2s ease;
 }
 
+#mk-fullscreen:hover,
 #mk-fab:hover,
 #mk-lyrics-btn:hover {
   background: rgba(255, 255, 255, 0.14);
@@ -141,6 +143,7 @@ html[data-mk-playing] #mk-fab {
   white-space: nowrap;
 }
 
+#mk-fullscreen svg,
 #mk-lyrics-btn svg {
   width: 18px;
   height: 18px;
@@ -630,10 +633,9 @@ html[data-mk-lyrics] #mk-bar-lyrics {
   /* por encima de la página y por debajo de la barra superior y del reproductor */
   z-index: 3;
   display: none;
-  grid-template-columns: minmax(260px, 36%) 1fr;
-  gap: clamp(28px, 5vw, 90px);
+  container: lyrics / size;
   /* --mk-ly-pad: el hueco de abajo cuando la barra del reproductor flota por encima */
-  padding: 0 clamp(24px, 6vw, 110px) var(--mk-ly-pad, 0px);
+  padding: 0 clamp(18px, 4vw, 128px) var(--mk-ly-pad, 0px);
   box-sizing: border-box;
   overflow: hidden;
   isolation: isolate;
@@ -645,7 +647,7 @@ html[data-mk-lyrics] #mk-bar-lyrics {
 }
 
 html[data-mk-lyrics] #mk-lyrics {
-  display: grid;
+  display: flex;
   animation: mk-ly-in 0.36s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -722,14 +724,15 @@ html[data-mk-lyrics] #mk-lyrics {
 
 #mk-lyrics .mk-ly-side {
   align-self: center;
+  flex: 0 0 min(32%, 66cqh);
   min-width: 0;
-  padding-right: 9%;
+  margin-inline-end: clamp(24px, 3cqw, 84px);
 }
 
 #mk-lyrics .mk-ly-art {
   position: relative;
-  width: 100%;
-  max-width: 360px;
+  /* El vinilo sobresale un 27% de la funda; ambos caben en la columna. */
+  width: 78%;
   aspect-ratio: 1;
 }
 
@@ -775,7 +778,7 @@ html[data-mk-lyrics] #mk-lyrics {
 
 #mk-lyrics .mk-ly-title {
   margin-top: 26px;
-  font-size: clamp(21px, 1.9vw, 30px);
+  font-size: clamp(23px, 2.1cqw, 54px);
   font-weight: 800;
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -787,7 +790,7 @@ html[data-mk-lyrics] #mk-lyrics {
 
 #mk-lyrics .mk-ly-artist {
   margin-top: 8px;
-  font-size: 15.5px;
+  font-size: clamp(15px, 1.1cqw, 26px);
   color: rgba(255, 255, 255, 0.68);
   white-space: nowrap;
   overflow: hidden;
@@ -871,21 +874,26 @@ html[data-mk-playing] #mk-lyrics .mk-ly-wave i {
 }
 
 #mk-lyrics .mk-ly-scroll {
+  position: relative;
+  flex: 1 1 0;
   min-width: 0;
   overflow-y: auto;
-  padding: 42vh 12px 42vh 0;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  padding: 50cqh calc(4% + 8px) 50cqh 0;
   scrollbar-width: none;
   -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
   mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
 }
 
 #mk-lyrics .mk-line {
-  margin: 0 0 22px;
-  font-size: clamp(22px, 2.5vw, 38px);
+  margin: 0 0 clamp(18px, 1.5cqw, 38px);
+  font-size: clamp(26px, 3.25cqw, 84px);
   font-weight: 800;
-  line-height: 1.22;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
   letter-spacing: -0.02em;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.52);
   cursor: pointer;
   transform-origin: left center;
   transition: color 0.4s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -897,43 +905,45 @@ html[data-mk-playing] #mk-lyrics .mk-ly-wave i {
 }
 
 #mk-lyrics .mk-line.mk-past {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.38);
 }
 
 /* la que viene justo después se adelanta un poco */
 #mk-lyrics .mk-line.mk-active + .mk-line {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.73);
 }
 
-/* La línea que suena: grande, con brillo del color de la portada, y se va llenando de luz de izquierda a derecha
-   durante el tiempo que dura (--mk-dur lo pone el código). */
+/* El relleno usa el reloj del reproductor incluso al pausar o saltar dentro de un verso. */
 #mk-lyrics .mk-line.mk-active {
+  color: #fff;
+  transform: translateX(0.12em) scale(1.04);
+}
+
+#mk-lyrics .mk-active .mk-original {
   color: transparent;
-  transform: scale(1.06);
-  background: linear-gradient(90deg, #fff 0 46%, rgba(255, 255, 255, 0.4) 54% 100%) 100% 0 / 220% 100% no-repeat;
+  background: linear-gradient(90deg, #fff 0 46%, rgba(255, 255, 255, 0.55) 54% 100%) var(--mk-fill, 100%) 0 / 220% 100% no-repeat;
   -webkit-background-clip: text;
   background-clip: text;
-  filter: drop-shadow(0 0 20px color-mix(in srgb, var(--mk-accent, #c4a1ff) 55%, transparent));
-  animation: mk-ly-fill var(--mk-dur, 3s) linear forwards;
 }
 
-@keyframes mk-ly-fill {
-  to {
-    background-position: 0 0;
-  }
-}
-
-html:not([data-mk-playing]) #mk-lyrics .mk-line.mk-active {
-  animation-play-state: paused;
+#mk-lyrics .mk-translation { display: none; }
+#mk-lyrics[data-translated] .mk-translation {
+  display: block;
+  margin-top: 0.32em;
+  font-size: max(17px, 0.60em);
+  font-weight: 550;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: inherit;
 }
 
 /* Letra sin tiempos: texto corrido que baja al ritmo de la canción. */
 #mk-lyrics[data-state='plain'] .mk-ly-scroll {
-  padding: 30vh 12px 30vh 0;
+  padding-block: 24cqh;
 }
 
 #mk-lyrics .mk-line.mk-plain {
-  font-size: clamp(18px, 1.7vw, 24px);
+  font-size: clamp(21px, 2.35cqw, 52px);
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.01em;
@@ -990,10 +1000,30 @@ html:not([data-mk-playing]) #mk-lyrics .mk-line.mk-active {
   color: rgba(255, 255, 255, 0.62);
 }
 
-#mk-lyrics .mk-ly-close {
+#mk-lyrics .mk-ly-actions {
   position: absolute;
   top: 18px;
   right: 22px;
+  left: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+#mk-lyrics .mk-ly-actions button { pointer-events: auto; }
+#mk-lyrics .mk-translate, #mk-lyrics .mk-translation-note:not(:empty) {
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 20px;
+  padding: 6px 12px;
+  background: #24232b;
+  color: white;
+  font: 600 13px/1.3 system-ui, sans-serif;
+}
+#mk-lyrics .mk-translate { cursor: pointer; }
+#mk-lyrics:not([data-state='synced']):not([data-state='plain']) .mk-translate { display: none; }
+#mk-lyrics .mk-ly-close {
+  flex: none;
   display: grid;
   place-items: center;
   width: 38px;
@@ -1017,14 +1047,18 @@ html:not([data-mk-playing]) #mk-lyrics .mk-line.mk-active {
   transform: rotate(90deg);
 }
 
-@media (max-width: 860px) {
-  #mk-lyrics {
-    grid-template-columns: 1fr;
-  }
-
+@container lyrics (max-width: 740px) {
   #mk-lyrics .mk-ly-side {
     display: none;
   }
+  #mk-lyrics .mk-line:not(.mk-plain) {
+    font-size: clamp(24px, 5.2cqw, 38px);
+  }
+}
+
+html[data-mk-motion='off'] #mk-lyrics .mk-line {
+  transition: none;
+  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1050,8 +1084,10 @@ html:not([data-mk-playing]) #mk-lyrics .mk-line.mk-active {
     transform: scaleY(0.6);
   }
 
-  #mk-lyrics .mk-line.mk-active {
-    animation: none;
-    background-position: 0 0;
+  #mk-lyrics .mk-active .mk-original {
+    color: white;
+    background: none;
   }
+
+  #mk-lyrics .mk-line.mk-active { transform: none; }
 }

@@ -20,6 +20,8 @@ Toma el color de la portada que suena, le suma letra que sigue la canción y un 
 - **El color sale de la portada.** El fondo, las barras y hasta la barra de título de la ventana se tiñen con la canción actual.
 - **El fondo baila con la música.** Las manchas de color laten con cada golpe y se mueven más rápido mientras más movida es la canción.
 - **Letra en vivo.** La línea que suena se va llenando de luz; al tocar una línea, la canción salta a esa parte (`Ctrl + L`).
+- **Letra bilingüe.** Abre una canción en inglés y pulsa **Traducir al español** para ver la traducción debajo de cada verso. Si el equipo carece de traductor local, puedes elegir **Traducir con MyMemory**.
+- **Pantalla completa.** Pulsa el botón de las cuatro esquinas junto a **Letra en vivo** o usa `F11`. El mismo botón permite volver a la ventana.
 - **Panel de diseño.** Temas, color de acento, fondo, movimiento, redondez y tipografía, con cambios al instante (`Ctrl + ,`).
 - **Tu cuenta de siempre.** Es YouTube Music de verdad: tu biblioteca, tus playlists y tu plan.
 
@@ -56,7 +58,7 @@ En la extensión la letra se abre con `Alt + L`.
 MoniMusic no tiene cuentas propias ni analítica. Los ajustes de diseño se guardan en tu equipo.
 Para buscar la letra se envían el título, el artista y la duración de la canción a [LRCLIB](https://lrclib.net),
 un servicio público de letras con tiempos. El sonido para mover el fondo se mide en tu equipo y no se envía a
-ningún lado.
+ningún lado. La traducción local puede descargar un paquete de idiomas la primera vez. Si eliges **Traducir con MyMemory**, la app envía a ese servicio el texto de los versos en inglés.
 
 ## Desarrollo
 

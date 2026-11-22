@@ -574,6 +574,9 @@ ytmusic-player-bar #expand-volume-slider {
 
 /* Play: un círculo blanco con un aro del color de la portada. */
 ytmusic-player-bar #play-pause-button {
+  position: relative;
+  box-sizing: border-box;
+  padding: 0 !important;
   width: 46px !important;
   height: 46px !important;
   margin: 0 9px !important;
@@ -584,6 +587,35 @@ ytmusic-player-bar #play-pause-button {
   --yt-icon-button-icon-color: #0b0b10;
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--mk-accent) 32%, transparent), 0 10px 24px -10px var(--mk-accent);
   transition: transform 0.18s ease, box-shadow 0.25s ease;
+}
+
+ytmusic-player-bar #play-pause-button > button {
+  position: relative;
+  display: grid !important;
+  place-items: center;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
+
+/* YouTube puede añadir un margen al icono dentro del botón nativo. */
+ytmusic-player-bar #play-pause-button yt-icon {
+  position: absolute !important;
+  inset: 0 !important;
+  margin: auto !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+ytmusic-player-bar #play-pause-button svg {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 ytmusic-player-bar #play-pause-button yt-icon,

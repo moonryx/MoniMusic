@@ -27,7 +27,7 @@
     nota: document.querySelector('.mk-ly-note')?.textContent,
     lineas: document.querySelectorAll('.mk-line').length,
     activa: document.querySelector('.mk-line.mk-active')?.textContent,
-    durLinea: document.querySelector('.mk-line.mk-active')?.style.getPropertyValue('--mk-dur'),
+    relleno: document.querySelector('.mk-line.mk-active')?.style.getPropertyValue('--mk-fill'),
     videos,
     barra: bar ? { max: bar.getAttribute('aria-valuemax'), now: bar.getAttribute('aria-valuenow'), tag: bar.tagName } : null,
     barras: document.querySelectorAll('#progress-bar').length,
